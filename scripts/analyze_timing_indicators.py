@@ -17,9 +17,9 @@ import pandas as pd
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from trader.data.providers import get_data_provider
-from trader.indicators import get_indicator
-from trader.utils.config import Config
+from kodiak.data.providers import get_data_provider
+from kodiak.indicators import get_indicator
+from kodiak.utils.config import Config
 
 
 def load_backtest(backtest_id: str) -> dict[str, Any]:

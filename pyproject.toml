@@ -1,33 +1,15 @@
 [project]
-name = "baretrader"
-version = "1.0.0"
-description = "CLI-based automated trading system"
+name = "kodiak-workspace"
+version = "2.0.0"
+description = "Kodiak automated trading system - monorepo workspace"
 authors = [
     {name = "Joe Caruso"}
 ]
 readme = "README.md"
 requires-python = ">=3.11,<4.0"
-dependencies = [
-    "click>=8.1.0",
-    "requests>=2.31.0",
-    "pandas>=2.0.0",
-    "python-dotenv>=1.0.0",
-    "pyyaml>=6.0",
-    "alpaca-py>=0.21.0",
-    "rich>=13.0.0",
-    "pytz>=2024.1",
-    "pyarrow>=19.0.0",
-    "bokeh>=3.3.0",
-    "pydantic>=2.0.0",
-    "mcp>=1.0.0",
-    "uvicorn>=0.30.0",
-]
-
-[project.scripts]
-trader = "trader.cli.main:cli"
 
 [tool.poetry]
-packages = [{include = "trader"}]
+package-mode = false
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"
@@ -36,6 +18,9 @@ ruff = "^0.3.0"
 mypy = "^1.8.0"
 types-requests = "^2.31.0"
 types-pyyaml = "^6.0.0"
+kodiak-core = {path = "packages/core", develop = true}
+kodiak-cli = {path = "packages/cli", develop = true}
+kodiak-server = {path = "packages/server", develop = true}
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
@@ -47,7 +32,7 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]
-ignore = ["E501"]  # line length; many lines slightly over 120
+ignore = ["E501"]
 
 [tool.mypy]
 python_version = "3.11"

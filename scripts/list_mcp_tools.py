@@ -7,7 +7,7 @@ used for debugging tool visibility issues in MCP clients.
 
 import asyncio
 
-from trader.mcp.server import _ALL_TOOLS
+from kodiak.mcp.tools import _ALL_TOOLS
 
 
 def main() -> None:

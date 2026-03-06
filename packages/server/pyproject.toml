@@ -1,0 +1,27 @@
+[project]
+name = "kodiak-server"
+version = "2.0.0"
+description = "Kodiak persistent server with REST API, MCP, and web UI"
+authors = [
+    {name = "Joe Caruso"}
+]
+requires-python = ">=3.11,<4.0"
+dependencies = [
+    "kodiak-core>=2.0.0",
+    "fastapi>=0.115.0",
+    "uvicorn>=0.30.0",
+    "jinja2>=3.1.0",
+]
+
+[project.scripts]
+kodiak-server = "kodiak_server.main:main"
+
+[tool.poetry]
+packages = [{include = "kodiak_server"}]
+
+[tool.poetry.group.dev.dependencies]
+kodiak-core = {path = "../core", develop = true}
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

@@ -1,0 +1,27 @@
+[project]
+name = "kodiak-core"
+version = "2.0.0"
+description = "Kodiak trading engine core library"
+authors = [
+    {name = "Joe Caruso"}
+]
+requires-python = ">=3.11,<4.0"
+dependencies = [
+    "requests>=2.31.0",
+    "pandas>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "pyyaml>=6.0",
+    "alpaca-py>=0.21.0",
+    "pytz>=2024.1",
+    "pyarrow>=19.0.0",
+    "bokeh>=3.3.0",
+    "pydantic>=2.0.0",
+    "mcp>=1.0.0",
+]
+
+[tool.poetry]
+packages = [{include = "kodiak"}]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

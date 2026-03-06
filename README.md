@@ -1,72 +1,69 @@
-# 📈 Kodiak — CLI-Based Automated Trading System
+# 📈 Kodiak — Automated Trading System (CLI + Server)
 
-Kodiak is a command-line trading platform for **automated stock trading**. It supports paper trading and live trading modes via Alpaca, with predefined trading strategies that handle complete trade lifecycles from entry to exit. From 1.0.0 the CLI and MCP tool set are treated as stable; breaking changes will be rare and noted in [CHANGELOG](CHANGELOG.md).
+Kodiak is a **Python monorepo** with two products:
+- **Kodiak CLI** (`kodiak`) — Ad-hoc calculations, predefined workloads, and manual trading. Click CLI for humans, stdio MCP for agents.
+- **Kodiak Server** (`kodiak-server`) — Persistent server with REST API, streamable HTTP MCP, web UI, and scheduling. Integrates with Panda (iOS) and Bear Claw (AI agent) for semi-automated financial decision-making.
+
+Both share a common core library (`kodiak-core`). The system supports paper and live trading modes via Alpaca, with predefined trading strategies that handle complete trade lifecycles from entry to exit. From 2.0.0 the architecture is stable; breaking changes will be rare and noted in [CHANGELOG](CHANGELOG.md).
 
 ---
 
 ## 🚀 Features
 
-* ✅ Paper & production environments
-* ✅ **Trading strategies** (trailing stop, bracket, scale-out, grid)
-* ✅ Portfolio tracking & trade ledger
-* ✅ Safety & risk controls
-* ✅ **Backtesting** with historical data
-* ✅ **Notifications** (Discord webhook, generic webhook) for alerts
+* ✅ **Dual interfaces**: CLI for humans, MCP (stdio + HTTP) for agents
+* ✅ **Paper & production environments** with safety controls
+* ✅ **Trading strategies** (trailing stop, bracket, scale-out, grid, pullback-trailing)
+* ✅ **Portfolio tracking & trade ledger**
+* ✅ **Backtesting** with historical data (CSV or Alpaca API)
+* ✅ **Strategy optimization** (grid/random search)
+* ✅ **Technical indicators** (SMA, EMA, RSI, MACD, ATR, Bollinger Bands, etc.)
+* ✅ **Notifications** (Discord webhook, generic webhook)
+* ✅ **REST API** (server only) for integrations
+* ✅ **Scheduling** (cron for CLI, async scheduler for server)
 
-**Tools**: 32 MCP tools (engine, portfolio, orders, strategies, backtests, analysis, indicators, optimization, safety, scheduling). CLI commands mirror these; run `trader --help` and `trader <command> --help` for the full CLI surface.
+**MCP Tools**: 32 tools across engine, portfolio, orders, strategies, backtests, analysis, indicators, optimization, safety, and scheduling. Available via CLI `kodiak mcp` (stdio) or server HTTP endpoint.
 
-## 🤖 MCP Server Usage
+## 🤖 Using Kodiak
 
-Kodiak supports both CLI users and AI agents via an MCP-compliant server. **For AI agents**: Use the MCP server for all operations (status, strategies, backtests, etc.); the CLI is for human use. Run CLI only when testing or verifying human-facing output (e.g. `trader status` or `trader --json <cmd>`).
+**For human users**: Use the CLI. `kodiak --help` lists all commands.
 
-**Quick Start**: Install → Configure → Use. See the Installation and Configure MCP Server sections below.
+**For AI agents**: Use the MCP tools (preferred). Connect via:
+- CLI stdio MCP: `kodiak mcp` (for Claude Desktop, Cursor, local agents)
+- Server HTTP MCP: `kodiak-server` then connect to `http://localhost:8000/mcp/` (for remote agents, Panda, Bear Claw)
 
-### Two-Step Setup
+CLI is for humans and testing; agents should use MCP tools for all operations.
 
-1. **Install**: `brew install baretrader` (or `pipx install -e .`)
-2. **Configure**: Add to Claude Desktop/Cursor MCP config (see below)
-
-That's it! Kodiak is ready to use with Claude Desktop or Cursor.
+**Quick Start**: See Installation and Configuration sections below.
 
 ## 📦 Installation
 
-### Installing
+**Prerequisites**: Python 3.11+ ([python.org](https://www.python.org/downloads/)). On Windows, install from python.org and check **Add Python to PATH**.
 
-**[BREW NOT CURRENTLY AVAILABLE]**
-To run from the CLI using an official version you can install with the `brew` package manager
+### Option 1: CLI Only (Recommended)
 
-Mac:
-```bash
-brew install baretrader
-```
-Public installation not currently available with Windows.
-
-Alternatively you can install globally from the repo using pipx (recommended so `trader` is on PATH for CLI and MCP):
-
-Mac:
-```bash
-sudo pipx install -e . --global
-```
-
-And verify:
+For ad-hoc trading and Claude Desktop MCP:
 
 ```bash
-trader status
+git clone <repo-url>
+cd Kodiak
+pip install pipx
+pipx install -e packages/cli/
 ```
 
-**Note**: When installed via **pipx** or Homebrew, Kodiak uses the same behavior: config, data, and logs go to `~/.baretrader/` (macOS) or `~/.config/baretrader/` (Linux). `trader config set` and all path resolution work identically with pipx. See the Installation section for path behavior.
+Verify:
+```bash
+kodiak status
+```
 
-### Configure MCP Server
+Config, data, and logs go to `~/.kodiak/` (macOS/Linux) or `%APPDATA%/kodiak/` (Windows).
 
-Add Kodiak to your Claude Desktop or Cursor MCP configuration:
-
-**Claude Desktop** (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+**Configure Claude Desktop** (`~/Library/Application Support/Claude/claude_desktop_config.json`):
 ```json
 {
   "mcpServers": {
     "Kodiak": {
-      "command": "trader",
-      "args": ["mcp", "serve"],
+      "command": "kodiak",
+      "args": ["mcp"],
       "env": {
         "ALPACA_API_KEY": "your_paper_key",
         "ALPACA_SECRET_KEY": "your_paper_secret"
@@ -76,70 +73,94 @@ Add Kodiak to your Claude Desktop or Cursor MCP configuration:
 }
 ```
 
-**Cursor**: Add via Settings → MCP Servers with the same configuration.
-
-**Restart** Claude Desktop or Cursor after saving the config.
-
-#### Troubleshooting
-
-- **"trader" command not found**: Use the full path to `trader` (run `which trader` and use that path in `command`)
-- **MCP server error**: Check API keys and JSON syntax (no trailing commas)
-- **Test installation**: Run `python3 scripts/test_installation.py` to verify setup
-- **Tool not visible in MCP client**: All 32+ tools are registered in the server. If a tool doesn't appear in your MCP client (e.g., Cursor), it may be filtered by the client. For testing, you can import tools directly: `from trader.mcp.server import <tool_name>`. To list all registered tools, run: `python3 -c "from trader.mcp.server import mcp; [print(f'{t.name}: {t.description[:60]}...') for t in mcp.list_tools()]"`
-
-See the Configure MCP Server and Troubleshooting sections above for setup details.
-
----
-
-
-**Prerequisites**: Python 3.11+ ([python.org](https://www.python.org/downloads/)) and pipx ([pipx.pypa.io](https://pipx.pypa.io/)). On Windows, install Python from python.org and check **Add Python to PATH**; then run `pip install pipx` and ensure pipx’s bin directory is on PATH.
-
-Install globally using pipx (recommended so `trader` is on PATH for CLI and MCP):
-
-Mac:
-```bash
-sudo pipx install -e . --global
+Or use the full path (run `which kodiak`):
+```json
+{
+  "mcpServers": {
+    "Kodiak": {
+      "command": "/usr/local/bin/kodiak",
+      "args": ["mcp"],
+      "env": { ... }
+    }
+  }
+}
 ```
 
-Windows:
-```
-//TODO
-```
+Restart Claude Desktop after saving. Done!
 
-Verify:
+### Option 2: Server + CLI (For Integration)
+
+For Panda, Bear Claw, or remote agent integration:
 
 ```bash
-trader status
+git clone <repo-url>
+cd Kodiak
+pip install poetry
+poetry install
 ```
 
----
+Start the server:
+```bash
+poetry run kodiak-server
+```
 
+Server runs on `http://localhost:8000` with:
+- REST API at `/api/`
+- MCP endpoint at `/mcp/`
+- Web UI at `/`
 
-## Streamable HTTP (later)
+Remote agents connect to `http://localhost:8000/mcp/` for MCP.
 
-Remote URL-based MCP (`--transport streamable-http` with optional HTTPS) is implemented but not the default. We’ll document cert setup, URL format, and client config once we lock the base workflow. For now, use **stdio** (above) for all agent and Claude Desktop use.
+CLI is also available: `poetry run kodiak status`.
+
+### Option 3: Development
+
+For contributing to Kodiak:
+
+```bash
+git clone <repo-url>
+cd Kodiak
+pip install poetry
+poetry install              # Install all 3 packages
+pipx install -e packages/cli/    # Optional: CLI on PATH
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup.
+
+### Troubleshooting
+
+- **"kodiak" not found**: Ensure pipx bin is on PATH. Run `pipx ensurepath`.
+- **"command not found" in Claude Desktop**: Use the full path. Run `which kodiak` and use that path in the config.
+- **MCP server error**: Check Alpaca API keys and JSON syntax (no trailing commas).
+- **Tool not visible**: All 32 tools are registered. If a tool doesn’t appear in your client, it may be filtered. List all tools: `python3 -c "from kodiak.mcp.tools import build_server; [print(t.name) for t in build_server().list_tools()]"`
 
 ## ⚙️ Configuration
 
-Configuration is **environment-based**: the app reads from environment variables and, when present, from a `.env` file (project root, CWD, or `~/.baretrader/.env` when installed). You can view and set values via the CLI; secrets are never shown in full when listing.
+Configuration is **environment-based**: the app reads from environment variables and, when present, from a `.env` file (project root, CWD, or `~/.kodiak/.env` when installed). You can view and set values via the CLI; secrets are never shown in full when listing.
 
 **Set API keys (persisted to `.env`):**
 ```bash
-trader config set ALPACA_API_KEY your_paper_key
-trader config set ALPACA_SECRET_KEY your_paper_secret
+kodiak config set ALPACA_API_KEY your_paper_key
+kodiak config set ALPACA_SECRET_KEY your_paper_secret
 ```
 
 **View current config (secrets redacted):**
 ```bash
-trader config list
-trader config get ALPACA_API_KEY          # redacted
-trader config get ALPACA_API_KEY --show-secret   # full value
-trader config keys   # list all available keys
+kodiak config list
+kodiak config get ALPACA_API_KEY          # redacted
+kodiak config get ALPACA_API_KEY --show-secret   # full value
+kodiak config keys   # list all available keys
 ```
 
-**Schedule (cron):** Use `trader schedule enable` to install a cron job that runs one cycle on a schedule; `trader schedule disable` to remove it. See "Schedule (cron) mode" above.
+**Schedule (cron)** — CLI only:
+```bash
+kodiak schedule enable          # Install cron job (every 5 min default)
+kodiak schedule enable --every 1  # Run every minute
+kodiak schedule status          # Show whether enabled
+kodiak schedule disable         # Remove cron job
+```
 
-For MCP/stdio, set keys in your `claude_desktop_config.json` `env` block so they are available to the subprocess. For CLI-only use, `trader config set` writes to the appropriate `.env` file.
+For MCP/stdio, set keys in your `claude_desktop_config.json` `env` block so they are available to the subprocess. For CLI-only use, `kodiak config set` writes to the appropriate `.env` file.
 
 ### MCP server (optional)
 
@@ -165,42 +186,42 @@ Optional YAML: copy `config/notifications.yaml.example` to `config/notifications
 
 ---
 
-## ▶️ Usage
+## ▶️ Usage (CLI)
 
 ### Check Status
 
 ```bash
-trader status
+kodiak status
 ```
 
 ### Start Trading Engine
 
 ```bash
-trader start
+kodiak start
 ```
 
 For production:
 
 ```bash
-trader --prod start
+kodiak --prod start
 # You'll be prompted to confirm before trading with real money
 ```
 
 ### Stop Engine
 
 ```bash
-trader stop
+kodiak stop
 ```
 
-### Schedule (cron) mode
+### Schedule (cron) mode — CLI only
 
-Instead of running the engine as a long-lived loop, you can run one evaluation cycle on a schedule. Use **`trader schedule enable`** to add a cron job that runs `trader run-once` (e.g. every 5 minutes); use **`trader schedule disable`** to remove it.
+Instead of running the engine as a long-lived loop, you can run one evaluation cycle on a schedule:
 
 ```bash
-trader schedule enable          # every 5 minutes (default)
-trader schedule enable --every 1 # every minute
-trader schedule status          # show whether enabled and the cron line
-trader schedule disable         # remove the cron job
+kodiak schedule enable          # every 5 minutes (default)
+kodiak schedule enable --every 1 # every minute
+kodiak schedule status          # show whether enabled and the cron line
+kodiak schedule disable         # remove the cron job
 ```
 
 Supported on macOS and Linux only. The job is added to your user crontab.
@@ -208,33 +229,33 @@ Supported on macOS and Linux only. The job is added to your user crontab.
 ### View Portfolio
 
 ```bash
-trader portfolio      # Full overview (balance + positions + orders)
-trader balance        # Account summary with P/L
-trader positions      # Open positions
-trader orders         # Open orders
-trader quote AAPL     # Get current quote
+kodiak portfolio      # Full overview (balance + positions + orders)
+kodiak balance        # Account summary with P/L
+kodiak positions      # Open positions
+kodiak orders         # Open orders
+kodiak quote AAPL     # Get current quote
 ```
 
 ### Analyze Trades
 
 ```bash
 # Last 30 days (default)
-trader analyze
+kodiak analyze
 
 # Filter by symbol and time window
-trader analyze --symbol AAPL --days 7
+kodiak analyze --symbol AAPL --days 7
 ```
 
 ### Notifications
 
 ```bash
-# Test notification delivery (requires DISCORD_WEBHOOK_URL or config)
-trader notify test
-trader notify test --channel discord
+# Test notification delivery
+kodiak notify test
+kodiak notify test --channel discord
 
 # Send a manual message
-trader notify send "Trading paused for maintenance"
-trader notify send "AAPL target hit" --channel discord
+kodiak notify send "Trading paused for maintenance"
+kodiak notify send "AAPL target hit" --channel discord
 ```
 
 ---
@@ -256,16 +277,16 @@ Strategies are **automated trading plans** that handle both entry and exit, mana
 
 ```bash
 # Trailing stop: buy AAPL, exit when price drops 5% from any high
-trader strategy add trailing-stop AAPL --qty 10 --trailing-pct 5
+kodiak strategy add trailing-stop AAPL --qty 10 --trailing-pct 5
 
 # Bracket: buy TSLA with +10% take-profit and -5% stop-loss
-trader strategy add bracket TSLA --qty 5 --take-profit 10 --stop-loss 5
+kodiak strategy add bracket TSLA --qty 5 --take-profit 10 --stop-loss 5
 
 # Scale out: buy GOOGL, sell portions at +5%, +10%, +15%
-trader strategy add scale-out GOOGL --qty 20
+kodiak strategy add scale-out GOOGL --qty 20
 
 # Grid: profit from NVDA's volatility with 5 buy/sell levels
-trader strategy add grid NVDA --levels 5
+kodiak strategy add grid NVDA --levels 5
 ```
 
 ### Strategy Options
@@ -294,14 +315,14 @@ Strategy-specific options:
 ### Manage Strategies
 
 ```bash
-trader strategy list              # List all strategies
-trader strategy show <id>         # Show details
-trader strategy enable <id>       # Enable
-trader strategy disable <id>      # Disable
-trader strategy pause <id>        # Pause (keeps state)
-trader strategy resume <id>       # Resume
-trader strategy remove <id>       # Remove
-trader strategy explain <type>    # Learn about a strategy type
+kodiak strategy list              # List all strategies
+kodiak strategy show <id>         # Show details
+kodiak strategy enable <id>       # Enable
+kodiak strategy disable <id>      # Disable
+kodiak strategy pause <id>        # Pause (keeps state)
+kodiak strategy resume <id>       # Resume
+kodiak strategy remove <id>       # Remove
+kodiak strategy explain <type>    # Learn about a strategy type
 ```
 
 ### How Strategies Work
@@ -348,7 +369,7 @@ mkdir -p $HISTORICAL_DATA_DIR
 # Add CSV files: $HISTORICAL_DATA_DIR/AAPL.csv, etc.
 
 # Option 3: Use --data-dir flag when running backtests
-trader backtest run trailing-stop AAPL --data-dir /path/to/data ...
+kodiak backtest run trailing-stop AAPL --data-dir /path/to/data ...
 ```
 
 **Note**: If you get a "Data directory not found" error, check that:
@@ -360,7 +381,7 @@ trader backtest run trailing-stop AAPL --data-dir /path/to/data ...
 
 ```bash
 # Trailing stop strategy
-trader backtest run trailing-stop AAPL \
+kodiak backtest run trailing-stop AAPL \
   --start 2024-01-02 \
   --end 2024-12-31 \
   --qty 10 \
@@ -369,7 +390,7 @@ trader backtest run trailing-stop AAPL \
   --data-dir data/historical
 
 # Bracket strategy
-trader backtest run bracket TSLA \
+kodiak backtest run bracket TSLA \
   --start 2024-01-02 \
   --end 2024-12-31 \
   --qty 5 \
@@ -379,7 +400,7 @@ trader backtest run bracket TSLA \
   --data-dir data/historical
 
 # Alpaca historical data (requires API keys)
-trader backtest run trailing-stop AAPL \
+kodiak backtest run trailing-stop AAPL \
   --start 2024-01-02 \
   --end 2024-12-31 \
   --qty 10 \
@@ -409,20 +430,20 @@ Note: Parquet caching requires the optional `pyarrow` dependency
 
 ```bash
 # List all backtests
-trader backtest list
+kodiak backtest list
 
 # Show detailed results
-trader backtest show <backtest-id>
+kodiak backtest show <backtest-id>
 
 # Compare multiple backtests
-trader backtest compare <id1> <id2> <id3>
+kodiak backtest compare <id1> <id2> <id3>
 
 # Save a chart for an existing backtest
-trader backtest show <backtest-id> --chart charts/backtest.html
+kodiak backtest show <backtest-id> --chart charts/backtest.html
 
 # Visualize a backtest by ID or JSON file
-trader visualize <backtest-id> --output charts/backtest.html --historical-dir data/historical
-trader visualize data/backtests/abc123.json --show --historical-dir data/historical
+kodiak visualize <backtest-id> --output charts/backtest.html --historical-dir data/historical
+kodiak visualize data/backtests/abc123.json --show --historical-dir data/historical
 ```
 
 ### What Gets Tracked
@@ -443,7 +464,7 @@ trader visualize data/backtests/abc123.json --show --historical-dir data/histori
 ### Example Output
 
 ```bash
-$ baretrader backtest show abc123
+$ barekodiak backtest show abc123
 
          Backtest Results - abc123
 ┌─────────────────┬────────────────────────┐
@@ -472,11 +493,11 @@ $ baretrader backtest show abc123
 
 ## 🧪 Strategy Optimization
 
-Use `trader optimize` to run grid or random search over strategy parameters.
+Use `kodiak optimize` to run grid or random search over strategy parameters.
 
 ```bash
 # Optimize trailing-stop percentage (grid search)
-trader optimize trailing-stop \
+kodiak optimize trailing-stop \
   --symbol AAPL \
   --start 2024-01-02 \
   --end 2024-12-31 \
@@ -485,7 +506,7 @@ trader optimize trailing-stop \
   --show-results
 
 # Optimize bracket strategy with multiple parameters
-trader optimize bracket \
+kodiak optimize bracket \
   --symbol TSLA \
   --start 2024-01-02 \
   --end 2024-12-31 \
@@ -495,7 +516,7 @@ trader optimize bracket \
   --show-results
 
 # Random search with sampling
-trader optimize trailing-stop \
+kodiak optimize trailing-stop \
   --symbol SPY \
   --start 2024-01-02 \
   --end 2024-12-31 \
@@ -530,10 +551,10 @@ installed it will be used; otherwise, built-in pandas-based calculations are use
 
 ```bash
 # List indicators
-trader indicator list
+kodiak indicator list
 
 # Describe an indicator
-trader indicator describe rsi
+kodiak indicator describe rsi
 ```
 
 Available indicators include SMA, EMA, RSI, MACD, ATR, Bollinger Bands, OBV, VWAP,
@@ -551,7 +572,7 @@ trader status
 trader balance
 
 # 3. Add a strategy
-trader strategy add trailing-stop AAPL --qty 5 --trailing-pct 5
+kodiak strategy add trailing-stop AAPL --qty 5 --trailing-pct 5
 
 # 4. Dry run first
 trader start --dry-run --once

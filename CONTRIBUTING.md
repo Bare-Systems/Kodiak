@@ -8,76 +8,101 @@ Thanks for your interest in contributing. This document covers setup, code style
 
 - **Python 3.11+** — [python.org](https://www.python.org/downloads/). On Windows, install from python.org and check **Add Python to PATH**.
 - **Poetry** — Dependency and project manager. It reads [pyproject.toml](pyproject.toml), locks versions in `poetry.lock`, and provides `poetry install`, `poetry run`, and `poetry add`. You still need Python installed; Poetry creates a virtual environment and installs packages. Install: [install.python-poetry.org](https://install.python-poetry.org/). On Windows, after installing ensure Poetry’s bin is on PATH.
-- **pipx** (optional but recommended) — Puts the `trader` CLI on your PATH so you can run `trader` and use the same Claude MCP config as end users. [pipx.pypa.io](https://pipx.pypa.io/); run `pip install pipx` then `pipx ensurepath` if needed.
+- **pipx** (optional but recommended) — Installs the `kodiak` CLI on your PATH so you can run `kodiak` commands and use the same Claude MCP config as end users. [pipx.pypa.io](https://pipx.pypa.io/); run `pip install pipx` then `pipx ensurepath` if needed.
 - **Alpaca account** — Paper (and optionally live) for testing.
 
 ---
 
 ## One-Time Setup
 
+Kodiak is a monorepo with three Python packages: **kodiak-core** (shared library), **kodiak-cli** (CLI tool), and **kodiak-server** (REST API + MCP server). Development requires installing all three from the workspace.
+
 ```bash
 git clone <repo-url>
-cd kodiak
+cd Kodiak
 poetry install
 ```
 
-Optional: install the CLI on your PATH for development so `trader` uses your local code:
+This installs all workspace packages in editable mode. To also install the `kodiak` CLI on your PATH for development:
 
 ```bash
-pipx install -e .
+pipx install -e packages/cli/
 ```
 
-Then you can run `trader status` (or `poetry run trader status`) and use the same Claude Desktop MCP config as in the README (`command`: `trader`, `args`: `["mcp", "serve"]`).
+Then you can run `kodiak status` (or `poetry run kodiak status`) and use the same Claude Desktop MCP config as in the README (`command`: `kodiak`, `args`: `["mcp"]`).
 
 ---
 
 ## Running the App
 
-- With Poetry only: `poetry run trader status`, `poetry run trader backtest list`, etc.
-- With pipx editable install: `trader status`, `trader backtest list`, etc.
+**CLI**:
+- With Poetry: `poetry run kodiak status`, `poetry run kodiak strategy list`, etc.
+- With pipx: `kodiak status`, `kodiak strategy list`, etc.
+
+**Server**:
+- With Poetry: `poetry run kodiak-server` (starts on `http://localhost:8000`)
+- Test: `curl http://localhost:8000/api/engine/status`
 
 ---
 
 ## MCP for Development
 
-Use the same Claude config as in the README: set `command` to the **full path** to `trader` (run `which trader` and use that path), and `args`: `["mcp", "serve"]`, plus `env` for your Alpaca keys. Claude Desktop often uses a limited PATH and won’t find `trader` if you only use `"command": "trader"`. Install with `pipx install -e .` from the repo root so that path runs your local code. Each new Claude conversation spawns a new MCP process, so code changes are picked up without restarting Claude. MCP rate limits and timeouts for long-running tools are configured via env (see README Configuration).
+**CLI MCP (stdio)**:
+Use the same Claude config as in the README: set `command` to the **full path** to `kodiak` (run `which kodiak` and use that path), and `args`: `["mcp"]`, plus `env` for your Alpaca keys. Claude Desktop often uses a limited PATH and won’t find `kodiak` if you only use `"command": "kodiak"`. Install with `pipx install -e packages/cli/` so that path runs your local code. Each new Claude conversation spawns a new MCP process, so code changes are picked up without restarting Claude.
 
-**Agents**: Use MCP tools as the primary interface for all operations. Run CLI commands only when testing or verifying human-facing output (e.g. `trader status` or `trader backtest list --json`).
+**Server MCP (streamable-http)**:
+For remote agents or Panda integration, start the server: `poetry run kodiak-server` (or `kodiak-server` if installed globally). The MCP endpoint is at `http://localhost:8000/mcp/`. MCP rate limits and timeouts for long-running tools are configured via env (see README Configuration).
 
-**Note on tool visibility**: All 32+ MCP tools are registered in the server (`trader/mcp/server.py`). Some MCP clients may filter or not display all tools. For testing, if a tool isn't visible in your client, you can import it directly: `from trader.mcp.server import <tool_name>`. To list all registered tools programmatically: `python3 -c "from trader.mcp.server import mcp; [print(f'{t.name}') for t in mcp.list_tools()]"`.
+**Agent Development**: Use MCP tools as the primary interface for all operations. Run CLI commands only when testing or verifying human-facing output (e.g. `kodiak status` or `kodiak strategy list --json`).
+
+**Note on tool visibility**: All 32 MCP tools are registered in `kodiak/mcp/tools.py`. Some MCP clients may filter or not display all tools. For testing, if a tool isn’t visible in your client, you can list all tools: `python3 -c "from kodiak.mcp.tools import build_server; server = build_server(); [print(f’{t.name}’) for t in server.list_tools()]"`.
 
 ---
 
 ## Project Layout
 
-- **trader/app/** — Shared application services (single source of truth for business logic)
-- **trader/cli/** — Click CLI (human-friendly, Rich tables)
-- **trader/mcp/** — MCP server (agent-friendly, JSON)
-- **trader/schemas/** — Pydantic models (contracts)
-- **trader/errors.py** — Shared error hierarchy
-- **trader/core/**, **trader/backtest/**, **trader/strategies/**, **trader/api/**, **trader/data/**, **trader/indicators/**, **trader/notifications/**, **trader/oms/**, **trader/utils/** — Domain and infra
+Kodiak is organized as a **monorepo with 3 packages**:
 
-**Dual-interface architecture**: CLI and MCP are thin adapters; both call `trader/app` and use `trader/schemas`. One core, two adapters — no logic duplication. For a full mapping of CLI commands to MCP tools, run `trader --help` and inspect the MCP server tool list (32 tools); the app layer in `trader/app/` is the single source of truth for both. See [CODEBASE_REVIEW.md](CODEBASE_REVIEW.md) for a package map, test coverage matrix, and gaps/redundancies report.
+### packages/core/ — kodiak-core (shared library)
+
+- **kodiak/app/** — Shared application services (single source of truth for business logic)
+- **kodiak/mcp/tools.py** — Transport-agnostic MCP tool definitions (32 tools, `build_server()` factory, `register_tools()`)
+- **kodiak/schemas/** — Pydantic v2 models (contracts)
+- **kodiak/errors.py** — Shared error hierarchy
+- **kodiak/core/**, **kodiak/backtest/**, **kodiak/strategies/**, **kodiak/api/**, **kodiak/data/**, **kodiak/indicators/**, **kodiak/notifications/**, **kodiak/oms/**, **kodiak/utils/** — Domain and infra
+
+### packages/cli/ — kodiak-cli (CLI tool)
+
+- **kodiak_cli/main.py** — Click CLI commands (human-friendly, Rich tables)
+- **kodiak_cli/schedule_cron.py** — Cron scheduling for periodic runs
+- Entry point: `kodiak` command
+
+### packages/server/ — kodiak-server (REST API + MCP server)
+
+- **kodiak_server/main.py** — FastAPI application factory
+- **kodiak_server/rest/routes/** — REST API endpoints (engine, portfolio, orders, strategies)
+- **kodiak_server/mcp/server.py** — Streamable-HTTP MCP transport
+- **kodiak_server/scheduler/** — Async scheduler (stub)
+- **kodiak_server/web/** — Web UI stub
+- Entry point: `kodiak-server` command
+
+**Dual-interface architecture**: CLI and Server both call shared `kodiak/app/` services and use `kodiak/schemas/`. One core, two adapters — no logic duplication. The app layer in `kodiak/app/` is the single source of truth for both. MCP tools are defined in `kodiak/mcp/tools.py` (transport-agnostic) and used by both `kodiak_cli` (stdio) and `kodiak_server` (HTTP).
 
 ```
-┌─────────────┐      ┌─────────────┐
-│   CLI       │      │  MCP Server │
-│  (Click)    │      │  (FastMCP)  │
-└──────┬──────┘      └──────┬──────┘
-       │                    │
-       └────────┬───────────┘
-                │
-         ┌──────▼──────┐
-         │  trader/app │  ← Shared business logic
-         │  (Services) │
-         └──────┬──────┘
-                │
-    ┌───────────┼───────────┐
-    │           │           │
-┌───▼────┐ ┌───▼────┐ ┌───▼────┐
-│ core/  │ │ backtest│ │  api/  │
-│strategies│ │ data/  │ │ oms/   │
-└────────┘ └────────┘ └────────┘
+┌──────────────────┐  ┌──────────────────────┐
+│   kodiak-cli     │  │   kodiak-server      │
+│  Click CLI       │  │  REST API (FastAPI)  │
+│  stdio MCP       │  │  HTTP MCP            │
+└────────┬─────────┘  └────────┬─────────────┘
+         └──────────┬──────────┘
+         ┌──────────┴──────────┐
+         │    kodiak-core      │
+         │  App services       │
+         │  Pydantic schemas   │
+         │  MCP tool defs      │
+         │  Trading engine     │
+         │  Strategies, etc.   │
+         └─────────────────────┘
 ```
 
 ---
@@ -98,11 +123,17 @@ poetry run mypy .
 ## Tests
 
 ```bash
-poetry run pytest
-poetry run pytest -v
-poetry run pytest --cov=trader
-poetry run pytest tests/test_mcp_server.py
+poetry run pytest                              # Run all tests
+poetry run pytest -v                           # Verbose
+poetry run pytest --cov=kodiak,kodiak_cli,kodiak_server  # Coverage
+poetry run pytest tests/core/test_mcp_server.py          # Specific test
 ```
+
+Test structure mirrors the monorepo:
+- `tests/core/` — Core library tests (app services, schemas, broker, engine, etc.)
+- `tests/cli/` — CLI tests
+- `tests/server/` — REST API, MCP, contract, and limits tests
+- `tests/integration/` — CLI–MCP parity and cross-package integration tests
 
 Write tests for new features; use the mock broker for integration tests; never run tests against live APIs with real money.
 
@@ -112,12 +143,13 @@ Write tests for new features; use the mock broker for integration tests; never r
 
 When adding a feature:
 
-1. **Business logic** in `trader/app/` (e.g. `portfolio.py`, `backtests.py`).
-2. **Schema** in `trader/schemas/` if needed (Pydantic models).
-3. **CLI** in `trader/cli/main.py` (Rich for display).
-4. **MCP tool** in `trader/mcp/server.py` (JSON).
-5. **Tests** in `tests/` for CLI and/or MCP.
-6. **Docs** — update README.md, CHANGELOG.md, and PLAN.md as needed.
+1. **Business logic** in `packages/core/kodiak/app/` (e.g. `portfolio.py`, `backtests.py`).
+2. **Schema** in `packages/core/kodiak/schemas/` if needed (Pydantic v2 models).
+3. **CLI command** in `packages/cli/kodiak_cli/main.py` (Click + Rich for display).
+4. **MCP tool** in `packages/core/kodiak/mcp/tools.py` (JSON-friendly, transport-agnostic).
+5. **Server REST endpoint** in `packages/server/kodiak_server/rest/routes/` if needed.
+6. **Tests** in `tests/{core,cli,server,integration}/` for the affected package.
+7. **Docs** — update README.md, CHANGELOG.md, and PLAN.md as needed.
 
 For product and safety overview, see [README.md](README.md).
 
@@ -138,8 +170,10 @@ poetry show --outdated
 
 ## Common Issues
 
-- **"trader" not found**: Pipx’s bin must be on PATH (`~/.local/bin` on Linux/macOS, `%USERPROFILE%\.local\bin` on Windows). Run `pipx ensurepath`.
-- **Changes not reflected**: If you use the global `trader`, ensure it’s the editable install (`pipx install -e .`). Otherwise use `poetry run trader`.
+- **"kodiak" not found**: Pipx’s bin must be on PATH (`~/.local/bin` on Linux/macOS, `%USERPROFILE%\.local\bin` on Windows). Run `pipx ensurepath`.
+- **Changes not reflected**: If you use the global `kodiak`, ensure it’s the editable install (`pipx install -e packages/cli/`). Otherwise use `poetry run kodiak`.
+- **Poetry workspace issues**: Ensure you run `poetry install` from the **root** directory (where the root `pyproject.toml` with `package-mode = false` is located).
+- **Import errors in tests**: Make sure tests import from the correct packages (e.g. `from kodiak_cli.main import cli` not `from kodiak.cli.main`).
 - **Backtest errors**: Ensure CSV files in `data/historical/` with columns `timestamp, open, high, low, close, volume`; date range must match data.
 - **Poetry lock out of sync**: After editing `pyproject.toml`, run `poetry lock` then `poetry install`.
 
@@ -147,10 +181,19 @@ poetry show --outdated
 
 ## Release Workflow
 
-1. Update version in `pyproject.toml` and `CHANGELOG.md`.
+Kodiak has three separate packages; version all three together:
+
+1. Update version in `packages/core/pyproject.toml`, `packages/cli/pyproject.toml`, `packages/server/pyproject.toml`, and `CHANGELOG.md`.
 2. Run `poetry run pytest` and `poetry run ruff check .` and `poetry run mypy .`.
-3. Commit, tag (`git tag v1.x.x`), push and push tags.
-4. `poetry build` then `poetry publish` (PyPI credentials required).
+3. Commit with message like "Release v2.1.0 (core, cli, server)", tag (`git tag v2.1.0`), push and push tags.
+4. Build and publish:
+   ```bash
+   poetry build --directory packages/core
+   poetry build --directory packages/cli
+   poetry build --directory packages/server
+   poetry publish
+   ```
+   (PyPI credentials required)
 
 ---
 

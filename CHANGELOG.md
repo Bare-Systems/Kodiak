@@ -4,6 +4,45 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0] - 2026-03-06
+
+### Added
+
+- **Monorepo Architecture** — Kodiak is now a Python monorepo with three packages:
+  - `kodiak-core` (packages/core/) — Shared library with app services, schemas, MCP tools, broker integrations, backtesting, strategies, indicators, and domain modules.
+  - `kodiak-cli` (packages/cli/) — Click CLI tool for humans. Exposes MCP tools via stdio transport (`kodiak mcp` command).
+  - `kodiak-server` (packages/server/) — FastAPI-based persistent server with REST API at `/api/`, streamable-HTTP MCP at `/mcp/`, web UI, and async scheduler. Integrates with Panda (iOS) and Bear Claw (AI agent).
+- **Three Entry Points**:
+  - `kodiak` — CLI tool (installed globally via `pipx install -e packages/cli/`)
+  - `kodiak-server` — Persistent server (started via `poetry run kodiak-server` or `kodiak-server`)
+  - Both share 32 MCP tools defined in `kodiak/mcp/tools.py` (transport-agnostic)
+- **Transport-Agnostic MCP Tools** — All 32 tools moved from `trader/mcp/server.py` to `kodiak/mcp/tools.py`. New `build_server()` factory creates FastMCP instances; `register_tools()` wires all tools. CLI uses stdio, server uses streamable-http.
+- **Poetry Workspace** — Root `pyproject.toml` with `package-mode = false` and path dependencies to all three packages. Developers run `poetry install` once from the root and get all packages in editable mode.
+- **Path Resolution** — Updated from fragile relative traversal to robust `.git` directory walking. Supports monorepo structure and works when installed globally via pipx.
+
+### Changed
+
+- **Command Renaming** — `trader` → `kodiak` for the CLI tool. Examples: `kodiak status`, `kodiak strategy add`, `kodiak backtest run`, `kodiak mcp`.
+- **MCP Command Simplification** — `trader mcp serve` → `kodiak mcp` (shorter, clearer).
+- **Config Paths** — `.baretrader/` → `.kodiak/` for consistency.
+- **Documentation** — CLAUDE.md, CONTRIBUTING.md, README.md, and PLAN.md updated for monorepo architecture, new command names, and dual-interface (CLI + Server) design.
+- **Test Reorganization** — Tests split into `tests/core/`, `tests/cli/`, `tests/server/`, `tests/integration/`. All imports updated from `trader.*` to `kodiak.*` or `kodiak_cli.*`.
+
+### Removed
+
+- **Old `trader/` Package** — Replaced by three new packages in the monorepo.
+
+### Fixed
+
+- **Subprocess Spawn** — Engine subprocess now invokes `kodiak_cli.main` (not `trader.cli.main`).
+
+### Quality
+
+- ✅ All 217 tests passing
+- ✅ Monorepo workspace validation
+- ✅ Cross-package integration tests (CLI–MCP parity)
+- ✅ Contract tests for MCP tools and REST API
+
 ## [1.1.0] - 2026-02-13
 
 ### Fixed

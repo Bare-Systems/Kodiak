@@ -1,0 +1,26 @@
+[project]
+name = "kodiak-cli"
+version = "2.0.0"
+description = "Kodiak CLI tool for automated trading"
+authors = [
+    {name = "Joe Caruso"}
+]
+requires-python = ">=3.11,<4.0"
+dependencies = [
+    "kodiak-core>=2.0.0",
+    "click>=8.1.0",
+    "rich>=13.0.0",
+]
+
+[project.scripts]
+kodiak = "kodiak_cli.main:cli"
+
+[tool.poetry]
+packages = [{include = "kodiak_cli"}]
+
+[tool.poetry.group.dev.dependencies]
+kodiak-core = {path = "../core", develop = true}
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

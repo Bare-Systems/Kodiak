@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kodiak Server</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 0 20px;
+            background: #0d1117;
+            color: #c9d1d9;
+        }
+        h1 { color: #58a6ff; }
+        .status { padding: 16px; border-radius: 8px; background: #161b22; margin: 16px 0; }
+        .status h2 { margin-top: 0; color: #8b949e; font-size: 14px; text-transform: uppercase; }
+        a { color: #58a6ff; }
+        code { background: #21262d; padding: 2px 6px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>Kodiak Server</h1>
+    <p>Automated trading server is running.</p>
+
+    <div class="status">
+        <h2>Endpoints</h2>
+        <ul>
+            <li><strong>REST API:</strong> <a href="/api/engine/status">/api/engine/status</a></li>
+            <li><strong>MCP:</strong> <code>/mcp/</code> (streamable HTTP)</li>
+            <li><strong>API Docs:</strong> <a href="/api/docs">/api/docs</a></li>
+        </ul>
+    </div>
+
+    <div class="status">
+        <h2>Clients</h2>
+        <ul>
+            <li><strong>CLI:</strong> <code>kodiak status</code></li>
+            <li><strong>Panda (iOS):</strong> Connect to this server's REST API</li>
+            <li><strong>Bear Claw (Agent):</strong> Connect via MCP streamable HTTP</li>
+        </ul>
+    </div>
+</body>
+</html>
