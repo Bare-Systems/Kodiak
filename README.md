@@ -1,10 +1,41 @@
-# 📈 Kodiak — Automated Trading System (CLI + Server)
+<div align="center">
+
+# Kodiak
+
+### Automated trading platform for human + AI collaboration
+
+Trade lifecycle automation with a human-first CLI and agent-first MCP interface.
+
+![python](https://img.shields.io/badge/python-3.11%2B-blue)
+![license](https://img.shields.io/badge/license-Apache%202.0-green)
+![protocol](https://img.shields.io/badge/protocol-MCP-purple)
+![interfaces](https://img.shields.io/badge/interfaces-CLI%20%2B%20Server-0ea5e9)
+
+</div>
 
 Kodiak is a **Python monorepo** with two products:
-- **Kodiak CLI** (`kodiak`) — Ad-hoc calculations, predefined workloads, and manual trading. Click CLI for humans, stdio MCP for agents.
-- **Kodiak Server** (`kodiak-server`) — Persistent server with REST API, streamable HTTP MCP, web UI, and scheduling. Integrates with Panda (iOS) and Bear Claw (AI agent) for semi-automated financial decision-making.
+- **Kodiak CLI** (`kodiak`) — Ad-hoc calculations, predefined workloads, manual trading, and stdio MCP for local agents.
+- **Kodiak Server** (`kodiak-server`) — Persistent service with REST API, streamable HTTP MCP, web UI, and scheduling for remote integrations.
 
-Both share a common core library (`kodiak-core`). The system supports paper and live trading modes via Alpaca, with predefined trading strategies that handle complete trade lifecycles from entry to exit. From 2.0.0 the architecture is stable; breaking changes will be rare and noted in [CHANGELOG](CHANGELOG.md).
+Both share a common core library (`kodiak-core`). The system supports paper and live trading via Alpaca, with strategy automation that manages the full trade lifecycle from entry to exit. From 2.0.0 onward, architecture and interfaces are stable; breaking changes are rare and clearly noted in [CHANGELOG](CHANGELOG.md).
+
+---
+
+## Table of Contents
+
+- [🚀 Features](#-features)
+- [🤖 Using Kodiak](#-using-kodiak)
+- [📦 Installation](#-installation)
+- [⚙️ Configuration](#️-configuration)
+- [▶️ Usage (CLI)](#️-usage-cli)
+- [📊 Trading Strategies](#-trading-strategies)
+- [🧪 Backtesting](#-backtesting)
+- [🧪 Strategy Optimization](#-strategy-optimization)
+- [📈 Indicators Library](#-indicators-library)
+- [💡 Quick Start](#-quick-start)
+- [🔒 Safety & Risk Controls](#-safety--risk-controls)
+- [🤝 Contributing](#-contributing)
+- [⚠️ Disclaimer](#️-disclaimer)
 
 ---
 
