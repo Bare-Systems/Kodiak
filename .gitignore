@@ -1,12 +1,15 @@
-# AI
-CLAUDE.md
-.claude/
+
+# Agent Context
+changes/
 .cursor/
+AGENTS.md
+PLAN.md
+CLAUDE.md
+.claude/worktrees/
+ROADMAP.md
 PORTFOLIO.md
 CONTEXTS.md
-
-# Changes
-.changes/
+deploy/
 PLAN-TEST*.md
 PLAN*.md
 
