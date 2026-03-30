@@ -1,0 +1,116 @@
+[blink]
+version = "1"
+
+# ── Target ────────────────────────────────────────────────────────────────────
+
+[targets.homelab]
+type         = "ssh"
+host         = "beelink"
+user         = "admin"
+base         = "/home/admin/baresystems"
+runtime_dir  = "/home/admin/baresystems/runtime/kodiak"
+publish_host = "192.168.86.53"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# kodiak — automated trading server (FastAPI REST + streamable HTTP MCP)
+# Port:    8000 (bound to publish_host for LAN access — has API key auth)
+# Network contract:
+#   - Kodiak binds to 192.168.86.53:8000 (reachable from BearClawWeb container)
+#   - BearClawWeb reaches Kodiak at http://192.168.86.53:8000
+#   - /health is public; /api/* and /mcp/* require Bearer KODIAK_API_TOKEN
+#   - Paper trading only; ALPACA_PROD_* keys are optional
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[services.kodiak]
+description  = "Kodiak automated trading server"
+port         = "8000"
+service_name = "kodiak"
+
+# ── Source: build Docker image locally and push to registry ───────────────────
+
+[services.kodiak.source]
+type          = "containerized_local_build"
+image         = "docker:cli"
+mount         = ".:/workspace"
+workdir       = "/workspace"
+command       = "mkdir -p dist && docker buildx build --platform linux/amd64 --load -t kodiak:local . && docker tag kodiak:local registry.home:5000/kodiak:latest && docker push registry.home:5000/kodiak:latest && echo registry.home:5000/kodiak:latest > dist/.pushed"
+docker_socket = true
+artifact      = "dist/.pushed"
+
+[services.kodiak.source.env]
+REGISTRY_HOST  = "registry.home:5000"
+REGISTRY_IMAGE = "kodiak"
+
+# ── Pipeline ──────────────────────────────────────────────────────────────────
+
+[services.kodiak.deploy]
+target            = "homelab"
+pipeline          = ["fetch_artifact", "provision", "stop", "start", "health_check", "verify"]
+rollback_pipeline = ["stop", "start", "health_check"]
+
+# ── Provision: runtime dirs + secrets seed ────────────────────────────────────
+
+[services.kodiak.provision]
+dirs = [
+  "{{runtime_dir}}/staging",
+  "{{runtime_dir}}/config",
+  "{{runtime_dir}}/data",
+  "{{runtime_dir}}/logs",
+]
+
+[services.kodiak.provision.env_file]
+path = "{{runtime_dir}}/kodiak.env"
+
+[services.kodiak.provision.env_file.seed]
+KODIAK_API_TOKEN      = "${KODIAK_API_TOKEN}"
+ALPACA_API_KEY        = "${ALPACA_API_KEY}"
+ALPACA_SECRET_KEY     = "${ALPACA_SECRET_KEY}"
+ALPACA_PROD_API_KEY   = "${ALPACA_PROD_API_KEY}"
+ALPACA_PROD_SECRET_KEY = "${ALPACA_PROD_SECRET_KEY}"
+
+# ── Stop ──────────────────────────────────────────────────────────────────────
+
+[services.kodiak.stop]
+command = "docker stop kodiak 2>/dev/null || true && docker rm kodiak 2>/dev/null || true"
+
+# ── Start ─────────────────────────────────────────────────────────────────────
+
+[services.kodiak.start]
+command = "docker pull registry.home:5000/kodiak:latest && docker tag registry.home:5000/kodiak:latest kodiak:local && docker run -d --name kodiak --restart unless-stopped -p {{publish_host}}:{{port}}:{{port}} -v {{runtime_dir}}/config:/app/config -v {{runtime_dir}}/data:/app/data -v {{runtime_dir}}/logs:/app/logs --env-file {{runtime_dir}}/kodiak.env kodiak:local"
+
+# ── Health check ──────────────────────────────────────────────────────────────
+
+[services.kodiak.health_check]
+url      = "http://{{publish_host}}:{{port}}/health"
+timeout  = 60
+interval = 3
+
+# ── Verify ────────────────────────────────────────────────────────────────────
+
+[services.kodiak.verify]
+tags = ["smoke", "health"]
+
+[services.kodiak.verify.tests.health]
+type          = "http"
+url           = "http://{{publish_host}}:{{port}}/health"
+expect_status = 200
+expect_body   = "\"kodiak\""
+tags          = ["smoke", "health"]
+
+[services.kodiak.verify.tests.container-running]
+type          = "shell"
+command       = "docker inspect --format '{{.State.Status}}' kodiak 2>/dev/null"
+expect_output = "running"
+tags          = ["health"]
+
+[services.kodiak.verify.tests.auth-required]
+type          = "http"
+url           = "http://{{publish_host}}:{{port}}/api/portfolio/summary"
+expect_status = 401
+tags          = ["smoke"]
+
+[services.kodiak.verify.tests.port-published]
+type          = "shell"
+command       = "docker ps --filter name=^/kodiak$ --format '{{.Ports}}'"
+expect_output = "/192\\.168\\.86\\.53:8000->8000\\/tcp/"
+tags          = ["health"]
