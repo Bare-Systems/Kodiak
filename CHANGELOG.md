@@ -8,7 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **Homelab port renumbered** — Changed homelab host port from `6704` to `6702`. Dropped the reserved `kodiak_mcp_port` (`6705`) — REST and `/mcp` are served on the same port. Updated `blink.toml` target, service port, `port-published` verify regex, and network contract comment.
 - **Homelab Blink publish port** — Split Kodiak's internal container port (`8000`) from its published homelab port (`18000`) in the included Blink manifest, avoiding the host-port collision with Portainer while keeping the server's internal runtime contract unchanged.
+- **Local Blink file privacy** — Ignored the repository-root `blink.toml` and `BLINK.md` and stopped tracking them so homelab-specific Blink targets and operator notes stay local-only.
 
 ## [2.0.1] - 2026-03-11
 

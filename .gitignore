@@ -19,6 +19,8 @@ suite/
 blink/
 .blink/
 blink
+/blink.toml
+/BLINK.md
 
 # Python
 __pycache__/
