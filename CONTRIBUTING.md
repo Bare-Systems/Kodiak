@@ -42,6 +42,7 @@ Then you can run `kodiak status` (or `poetry run kodiak status`) and use the sam
 **Server**:
 - With Poetry: `poetry run kodiak-server` (starts on `http://localhost:8000`)
 - Test: `curl http://localhost:8000/api/engine/status`
+- The included homelab Blink deployment publishes Kodiak on `http://192.168.86.53:18000`; the container still listens on `8000` internally because host port `8000` is reserved for Portainer there.
 
 ---
 
@@ -149,7 +150,7 @@ When adding a feature:
 4. **MCP tool** in `packages/core/kodiak/mcp/tools.py` (JSON-friendly, transport-agnostic).
 5. **Server REST endpoint** in `packages/server/kodiak_server/rest/routes/` if needed.
 6. **Tests** in `tests/{core,cli,server,integration}/` for the affected package.
-7. **Docs** — update README.md, CHANGELOG.md, and PLAN.md as needed.
+7. **Docs** — update README.md and CHANGELOG.md as needed, and use the workspace root `ROADMAP.md` for active unfinished work.
 
 For product and safety overview, see [README.md](README.md).
 
@@ -199,4 +200,4 @@ Kodiak has three separate packages; version all three together:
 
 ## Roadmap and Help
 
-See [PLAN.md](PLAN.md) for the development roadmap. Open an issue for questions or discussion.
+See the workspace root `ROADMAP.md` for active unfinished work. Open an issue for questions or discussion.

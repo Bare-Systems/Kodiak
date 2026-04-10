@@ -9,13 +9,14 @@ Runs a FastAPI application with:
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 
 
 def create_app():
     """Create the combined FastAPI + MCP application."""
-    from fastapi import FastAPI
-    from fastapi.staticfiles import StaticFiles
+    from fastapi import FastAPI, Request
+    from fastapi.responses import JSONResponse
 
     from kodiak_server.mcp.server import create_mcp_app
     from kodiak_server.rest.app import create_rest_app
@@ -26,6 +27,23 @@ def create_app():
         description="Automated trading server with REST API and MCP",
         version="2.0.0",
     )
+
+    # API key auth — protects /api/* and /mcp/* routes.
+    # Set KODIAK_API_TOKEN in the environment; /health is always exempt.
+    @app.middleware("http")
+    async def api_key_auth(request: Request, call_next):
+        protected = request.url.path.startswith("/api") or request.url.path.startswith("/mcp")
+        if protected:
+            token = os.environ.get("KODIAK_API_TOKEN", "")
+            auth = request.headers.get("Authorization", "")
+            if not token or auth != f"Bearer {token}":
+                return JSONResponse({"error": "unauthorized"}, status_code=401)
+        return await call_next(request)
+
+    # Health endpoint — no auth required, checked by blink and BearClawWeb.
+    @app.get("/health")
+    async def health():
+        return {"status": "ok", "service": "kodiak"}
 
     # Mount REST API
     rest_app = create_rest_app()
