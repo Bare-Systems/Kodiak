@@ -13,7 +13,7 @@ Review and optimize the portfolio by:
 
 ## Available MCP Tools
 
-Use these BareTrader MCP tools:
+Use these Kodiak MCP tools:
 - `get_trade_history(symbol=None, limit=100)` - Get recent trades (last day)
 - `get_today_pnl` - Get today's realized P/L
 - `analyze_performance(symbol=None, days=1, limit=100)` - Analyze performance metrics

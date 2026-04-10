@@ -13,7 +13,7 @@ Create all strategies defined in PORTFOLIO.md by:
 
 ## Available MCP Tools
 
-Use these BareTrader MCP tools:
+Use these Kodiak MCP tools:
 - `create_strategy` - Create new strategy
 - `list_strategies` - List existing strategies
 - `get_strategy(strategy_id)` - Get strategy details

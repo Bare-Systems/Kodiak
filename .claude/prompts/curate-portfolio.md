@@ -20,7 +20,7 @@ Only run this workflow after:
 
 ## Available MCP Tools
 
-Use these BareTrader MCP tools:
+Use these Kodiak MCP tools:
 - `list_backtests` - List saved backtests
 - `show_backtest(backtest_id)` - Get detailed results
 - `compare_backtests(backtest_ids)` - Compare backtests

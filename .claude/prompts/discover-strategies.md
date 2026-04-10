@@ -13,7 +13,7 @@ Help discover trading strategies by:
 
 ## Available MCP Tools
 
-Use these BareTrader MCP tools:
+Use these Kodiak MCP tools:
 - `get_quote(symbol)` - Get current price
 - `run_backtest` - Test strategies
 - `compare_backtests` - Compare results

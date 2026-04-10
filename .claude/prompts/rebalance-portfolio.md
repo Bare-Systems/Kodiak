@@ -13,7 +13,7 @@ Rebalance the trading account to match target allocations in PORTFOLIO.md by:
 
 ## Available MCP Tools
 
-Use these BareTrader MCP tools:
+Use these Kodiak MCP tools:
 - `get_balance` - Get account balance and equity
 - `get_positions` - Get current open positions
 - `list_strategies` - List active strategies

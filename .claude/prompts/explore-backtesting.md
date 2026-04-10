@@ -1,6 +1,6 @@
-# Explore BareTrader Backtesting
+# Explore Kodiak Backtesting
 
-Comprehensive exploration of BareTrader backtesting capabilities using MCP tools. This prompt guides systematic testing of strategies across different symbols, time periods, and parameters.
+Comprehensive exploration of Kodiak backtesting capabilities using MCP tools. This prompt guides systematic testing of strategies across different symbols, time periods, and parameters.
 
 ## Objective
 
@@ -12,7 +12,7 @@ Help explore backtesting capabilities by:
 
 ## Available MCP Tools
 
-Use these BareTrader MCP tools:
+Use these Kodiak MCP tools:
 - `list_strategies` - See configured strategies
 - `run_backtest` - Run backtest on historical data
 - `show_backtest(backtest_id)` - Get detailed results
