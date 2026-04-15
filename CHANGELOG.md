@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Container port mapping** — Start command was mapping `6702:6702` (host:container) but the container listens on `8000`. Corrected to `6702:8000`. Updated `port-published` verify regex from `6702->6702` to `6702->8000` to match. This was the root cause of health check timeouts on deploy.
+
 ### Changed
 
 - **Homelab port renumbered** — Changed homelab host port from `6704` to `6702`. Dropped the reserved `kodiak_mcp_port` (`6705`) — REST and `/mcp` are served on the same port. Updated `blink.toml` target, service port, `port-published` verify regex, and network contract comment.
