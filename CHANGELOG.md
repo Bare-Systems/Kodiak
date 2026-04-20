@@ -6,12 +6,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **Versioned REST API (K1-A)** — All REST routes are now under `/api/v1/` (e.g. `/api/v1/engine/status`, `/api/v1/portfolio/summary`). The previous unversioned paths no longer exist. Bear-Claw-Web's `KodiakClient` has been updated to use `/api/v1/` prefixes, unwrap response envelopes, propagate actor/role headers, and return the inner strategies array.
+- **Standard response envelopes (K1-B)** — Every REST response now uses a consistent JSON envelope: `{"data": ..., "error": null, "meta": {"request_id": "...", "version": "v1"}}` for success and `{"data": null, "error": {"code": ..., "message": ...}, "meta": {...}}` for errors. `AppError` subclasses map to correct HTTP status codes (404 for `NotFoundError`, 422 for `ValidationError`, 400 for others).
+- **Actor propagation (K1-C)** — REST middleware accepts `X-BearClaw-Actor` and `X-BearClaw-Role` headers and threads them into the audit log. Every audit entry now includes `actor`, `role`, and `request_id` fields when a request originates from the REST API. New `set_audit_context()` function in `audit.py` for setting these context vars.
+- **Request ID tracing** — Every API response carries an `X-Request-ID` response header and a matching `meta.request_id` in the body. Both are the same UUID generated per request.
+- **OpenAPI schema export (K1-D)** — `GET /api/v1/schema.json` returns the full OpenAPI spec for the REST API. Useful for generating typed clients (e.g. the Bear-Claw-Web Ruby `KodiakClient`). Interactive docs remain at `/api/docs`.
+- **REST API contract tests** — New `tests/server/test_rest_api.py` covering: auth enforcement, versioned routes, envelope shape, request ID consistency, actor header acceptance, and schema export.
+
+### Added (K2 — State Management)
+
+- **PostgreSQL strategy store (K2-A)** — New `kodiak.db` module with `db/connection.py`, `db/migrations.py`, and `db/pg_strategy_store.py`. When `KODIAK_DATABASE_URL` is set, `strategies/loader.py` routes all reads/writes to the `kodiak.strategies` Postgres table. Falls back to YAML transparently when the env var is absent, so CI and local dev continue unchanged.
+- **PostgreSQL order store (K2-B)** — `db/pg_order_store.py` mirrors the OMS `save_order`/`load_orders`/`save_orders` interface against a `kodiak.orders` Postgres table with indexed `external_id` and `status` columns. `oms/store.py` routes to Postgres when configured.
+- **Auto-migration on startup** — `kodiak-server` now calls `ensure_schema()` during the FastAPI lifespan startup hook. Schema is applied automatically on every deploy — no manual migration step needed. If `KODIAK_DATABASE_URL` is unset, startup is a no-op and YAML stores are used. Migration failure logs a warning but does not crash the server.
+- **Enriched audit log (K2-C)** — Audit records now include `client_ip` (source IP of REST requests) in addition to `actor`, `role`, and `request_id` added in K1. The audit file is opened in append-only mode; all fields are written atomically per record.
+- **psycopg2-binary** — Added to `kodiak-core` dependencies.
+
 ### Fixed
 
 - **Container port mapping** — Start command was mapping `6702:6702` (host:container) but the container listens on `8000`. Corrected to `6702:8000`. Updated `port-published` verify regex from `6702->6702` to `6702->8000` to match. This was the root cause of health check timeouts on deploy.
 
 ### Changed
 
+- **Portal path docs** — Updated Kodiak's workspace documentation to point at the root-level `../Portal/` rendezvous scaffold after it was moved out of the Kodiak repo tree.
+- **Portal scaffold** — Added an incubating `Portal/` control-plane starter with a file-backed site registry, a rendezvous route-resolution API, and directory-local architecture notes for the future public cloud entrypoint. This is not the finished hosted product; public-host and Blink integration remain open.
 - **Homelab port renumbered** — Changed homelab host port from `6704` to `6702`. Dropped the reserved `kodiak_mcp_port` (`6705`) — REST and `/mcp` are served on the same port. Updated `blink.toml` target, service port, `port-published` verify regex, and network contract comment.
 - **Homelab Blink publish port** — Split Kodiak's internal container port (`8000`) from its published homelab port (`18000`) in the included Blink manifest, avoiding the host-port collision with Portainer while keeping the server's internal runtime contract unchanged.
 - **Local Blink file privacy** — Ignored the repository-root `blink.toml` and `BLINK.md` and stopped tracking them so homelab-specific Blink targets and operator notes stay local-only.

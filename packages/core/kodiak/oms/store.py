@@ -1,9 +1,19 @@
-"""Simple order persistence (YAML) for the OMS scaffold."""
+"""Order persistence for the OMS.
+
+Routes to the PostgreSQL store when KODIAK_DATABASE_URL is configured,
+otherwise falls back to YAML (config/orders.yaml) for local dev and CI.
+"""
+import os
 from pathlib import Path
 
 import yaml
 
 from kodiak.models.order import Order
+
+
+def _use_postgres() -> bool:
+    """True when KODIAK_DATABASE_URL is set — use the Postgres store."""
+    return bool(os.getenv("KODIAK_DATABASE_URL"))
 
 
 def get_orders_file(config_dir: Path | None = None) -> Path:
@@ -15,6 +25,10 @@ def get_orders_file(config_dir: Path | None = None) -> Path:
 
 
 def save_orders(orders: list[Order], config_dir: Path | None = None) -> None:
+    """Batch save orders (Postgres if configured, else YAML)."""
+    if _use_postgres():
+        from kodiak.db.pg_order_store import save_orders as _pg
+        return _pg(orders)
     path = get_orders_file(config_dir)
     data = {"orders": [o.to_dict() for o in orders]}
     with open(path, "w") as f:
@@ -22,6 +36,10 @@ def save_orders(orders: list[Order], config_dir: Path | None = None) -> None:
 
 
 def load_orders(config_dir: Path | None = None) -> list[Order]:
+    """Load orders (Postgres if configured, else YAML)."""
+    if _use_postgres():
+        from kodiak.db.pg_order_store import load_orders as _pg
+        return _pg()
     path = get_orders_file(config_dir)
     if not path.exists():
         return []
@@ -78,12 +96,15 @@ def _to_local_order(order_obj: object) -> Order:
 
 
 def save_order(order_obj: object, config_dir: Path | None = None) -> None:
-    """Save or update a single order to the orders file.
+    """Save or update a single order (Postgres if configured, else YAML).
 
     Accepts either a local `Order` instance or a broker-like Order object.
     """
-    orders = load_orders(config_dir)
+    if _use_postgres():
+        from kodiak.db.pg_order_store import save_order as _pg
+        return _pg(order_obj)
 
+    orders = load_orders(config_dir)
     local = order_obj if isinstance(order_obj, Order) else _to_local_order(order_obj)
 
     # Replace existing by id if found

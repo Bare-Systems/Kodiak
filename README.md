@@ -19,6 +19,13 @@ Kodiak is a **Python monorepo** with two products:
 
 Both share a common core library (`kodiak-core`). The system supports paper and live trading via Alpaca, with strategy automation that manages the full trade lifecycle from entry to exit. From 2.0.0 onward, architecture and interfaces are stable; breaking changes are rare and clearly noted in [CHANGELOG](CHANGELOG.md).
 
+The Bare Systems workspace also now contains an incubating cloud rendezvous
+portal scaffold under [`../Portal/`](../Portal/README.md). That directory is
+intentionally separate
+from the trading runtime and is reserved for the future public control plane
+that will broker authenticated access to home-edge services without terminating
+application TLS in the cloud.
+
 ---
 
 ## Table of Contents

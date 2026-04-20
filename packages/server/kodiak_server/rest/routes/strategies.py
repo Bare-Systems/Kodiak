@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from kodiak.app.strategies import (
@@ -14,27 +14,22 @@ from kodiak.app.strategies import (
     resume_strategy,
     set_strategy_enabled,
 )
-from kodiak.errors import AppError
+from kodiak_server.rest.context import RequestContext, get_request_context
+from kodiak_server.rest.response import ok
 
 router = APIRouter(prefix="/strategies")
 
 
 @router.get("/")
-def get_strategies():
+def get_strategies(ctx: RequestContext = Depends(get_request_context)):
     """List all strategies."""
-    try:
-        return list_strategies()
-    except AppError as e:
-        raise HTTPException(status_code=400, detail=e.to_dict())
+    return ok(list_strategies(), ctx.request_id)
 
 
 @router.get("/{strategy_id}")
-def get_strategy(strategy_id: str):
+def get_strategy(strategy_id: str, ctx: RequestContext = Depends(get_request_context)):
     """Get strategy details."""
-    try:
-        return get_strategy_detail(strategy_id)
-    except AppError as e:
-        raise HTTPException(status_code=400, detail=e.to_dict())
+    return ok(get_strategy_detail(strategy_id), ctx.request_id)
 
 
 class CreateStrategyRequest(BaseModel):
@@ -47,39 +42,30 @@ class CreateStrategyRequest(BaseModel):
 
 
 @router.post("/")
-def create(req: CreateStrategyRequest):
+def create(
+    req: CreateStrategyRequest,
+    ctx: RequestContext = Depends(get_request_context),
+):
     """Create a new strategy."""
-    try:
-        return create_strategy(**req.model_dump(exclude_none=True))
-    except AppError as e:
-        raise HTTPException(status_code=400, detail=e.to_dict())
+    return ok(create_strategy(**req.model_dump(exclude_none=True)), ctx.request_id)
 
 
 @router.delete("/{strategy_id}")
-def delete_strategy(strategy_id: str):
+def delete_strategy(strategy_id: str, ctx: RequestContext = Depends(get_request_context)):
     """Remove a strategy."""
-    try:
-        return remove_strategy(strategy_id)
-    except AppError as e:
-        raise HTTPException(status_code=400, detail=e.to_dict())
+    return ok(remove_strategy(strategy_id), ctx.request_id)
 
 
 @router.post("/{strategy_id}/pause")
-def pause(strategy_id: str):
+def pause(strategy_id: str, ctx: RequestContext = Depends(get_request_context)):
     """Pause a strategy."""
-    try:
-        return pause_strategy(strategy_id)
-    except AppError as e:
-        raise HTTPException(status_code=400, detail=e.to_dict())
+    return ok(pause_strategy(strategy_id), ctx.request_id)
 
 
 @router.post("/{strategy_id}/resume")
-def resume(strategy_id: str):
+def resume(strategy_id: str, ctx: RequestContext = Depends(get_request_context)):
     """Resume a strategy."""
-    try:
-        return resume_strategy(strategy_id)
-    except AppError as e:
-        raise HTTPException(status_code=400, detail=e.to_dict())
+    return ok(resume_strategy(strategy_id), ctx.request_id)
 
 
 class EnableRequest(BaseModel):
@@ -87,9 +73,10 @@ class EnableRequest(BaseModel):
 
 
 @router.post("/{strategy_id}/enabled")
-def set_enabled(strategy_id: str, req: EnableRequest):
+def set_enabled(
+    strategy_id: str,
+    req: EnableRequest,
+    ctx: RequestContext = Depends(get_request_context),
+):
     """Enable or disable a strategy."""
-    try:
-        return set_strategy_enabled(strategy_id, req.enabled)
-    except AppError as e:
-        raise HTTPException(status_code=400, detail=e.to_dict())
+    return ok(set_strategy_enabled(strategy_id, req.enabled), ctx.request_id)

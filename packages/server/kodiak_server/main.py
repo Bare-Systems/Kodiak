@@ -1,7 +1,7 @@
 """Kodiak Server entry point.
 
 Runs a FastAPI application with:
-- REST API at /api/
+- REST API at /api/v1/
 - MCP server (streamable HTTP) at /mcp/
 - Web UI at /
 """
@@ -11,6 +11,27 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+from contextlib import asynccontextmanager
+
+
+def _run_migrations() -> None:
+    """Apply the kodiak schema to Postgres on startup if DB is configured.
+
+    Idempotent — safe to run on every boot. If KODIAK_DATABASE_URL is not
+    set, this is a no-op and the YAML stores are used instead.
+    """
+    from kodiak.db.connection import db_available
+
+    if not db_available():
+        return
+
+    try:
+        from kodiak.db.migrations import ensure_schema
+        ensure_schema()
+        print("  DB:        kodiak schema up to date", file=sys.stderr)
+    except Exception as e:
+        # Log but don't crash — YAML fallback is still available.
+        print(f"  DB:        migration warning: {e}", file=sys.stderr)
 
 
 def create_app():
@@ -22,10 +43,18 @@ def create_app():
     from kodiak_server.rest.app import create_rest_app
     from kodiak_server.web import create_web_app
 
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):  # noqa: ARG001
+        # Startup: apply any pending DB schema migrations.
+        _run_migrations()
+        yield
+        # Shutdown: nothing to clean up yet.
+
     app = FastAPI(
         title="Kodiak Server",
         description="Automated trading server with REST API and MCP",
         version="2.0.0",
+        lifespan=lifespan,
     )
 
     # API key auth — protects /api/* and /mcp/* routes.
@@ -78,9 +107,11 @@ def main() -> None:
         ssl_kwargs["ssl_keyfile"] = args.ssl_keyfile
 
     print(f"Starting Kodiak Server on {args.host}:{args.port}", file=sys.stderr)
-    print(f"  REST API: http://{args.host}:{args.port}/api/", file=sys.stderr)
-    print(f"  MCP:      http://{args.host}:{args.port}/mcp/", file=sys.stderr)
-    print(f"  Web UI:   http://{args.host}:{args.port}/", file=sys.stderr)
+    print(f"  REST API:  http://{args.host}:{args.port}/api/v1/", file=sys.stderr)
+    print(f"  API docs:  http://{args.host}:{args.port}/api/docs", file=sys.stderr)
+    print(f"  Schema:    http://{args.host}:{args.port}/api/v1/schema.json", file=sys.stderr)
+    print(f"  MCP:       http://{args.host}:{args.port}/mcp/", file=sys.stderr)
+    print(f"  Web UI:    http://{args.host}:{args.port}/", file=sys.stderr)
 
     uvicorn.run(
         "kodiak_server.main:create_app",

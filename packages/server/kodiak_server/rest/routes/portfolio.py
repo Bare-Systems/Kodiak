@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 
 from kodiak.app.portfolio import (
     get_balance,
@@ -11,57 +11,47 @@ from kodiak.app.portfolio import (
     get_quote,
     get_top_movers,
 )
-from kodiak.errors import AppError
 from kodiak.utils.config import load_config
+from kodiak_server.rest.context import RequestContext, get_request_context
+from kodiak_server.rest.response import ok
 
 router = APIRouter(prefix="/portfolio")
 
 
 @router.get("/balance")
-def balance():
+def balance(ctx: RequestContext = Depends(get_request_context)):
     """Get account balance."""
-    try:
-        config = load_config()
-        return get_balance(config)
-    except AppError as e:
-        raise HTTPException(status_code=400, detail=e.to_dict())
+    config = load_config()
+    return ok(get_balance(config), ctx.request_id)
 
 
 @router.get("/positions")
-def positions():
+def positions(ctx: RequestContext = Depends(get_request_context)):
     """Get open positions."""
-    try:
-        config = load_config()
-        return get_positions(config)
-    except AppError as e:
-        raise HTTPException(status_code=400, detail=e.to_dict())
+    config = load_config()
+    return ok(get_positions(config), ctx.request_id)
 
 
 @router.get("/summary")
-def summary():
+def summary(ctx: RequestContext = Depends(get_request_context)):
     """Get full portfolio summary."""
-    try:
-        config = load_config()
-        return get_portfolio_summary(config)
-    except AppError as e:
-        raise HTTPException(status_code=400, detail=e.to_dict())
+    config = load_config()
+    return ok(get_portfolio_summary(config), ctx.request_id)
 
 
 @router.get("/quote/{symbol}")
-def quote(symbol: str):
+def quote(symbol: str, ctx: RequestContext = Depends(get_request_context)):
     """Get a quote for a symbol."""
-    try:
-        config = load_config()
-        return get_quote(config, symbol)
-    except AppError as e:
-        raise HTTPException(status_code=400, detail=e.to_dict())
+    config = load_config()
+    return ok(get_quote(config, symbol), ctx.request_id)
 
 
 @router.get("/movers")
-def movers(market_type: str = Query("stocks"), limit: int = Query(10)):
+def movers(
+    market_type: str = Query("stocks"),
+    limit: int = Query(10),
+    ctx: RequestContext = Depends(get_request_context),
+):
     """Get top movers."""
-    try:
-        config = load_config()
-        return get_top_movers(config, market_type=market_type, limit=limit)
-    except AppError as e:
-        raise HTTPException(status_code=400, detail=e.to_dict())
+    config = load_config()
+    return ok(get_top_movers(config, market_type=market_type, limit=limit), ctx.request_id)
