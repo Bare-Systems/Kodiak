@@ -4,7 +4,6 @@ from datetime import datetime
 from decimal import Decimal
 
 import pandas as pd
-
 from kodiak.backtest.results import BacktestResult
 from kodiak.optimization.objectives import score_result
 from kodiak.optimization.optimizer import Optimizer

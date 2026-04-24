@@ -20,8 +20,22 @@ from kodiak.schemas.orders import OrderRequest, OrderResponse
 from kodiak.schemas.portfolio import (
     AccountInfo,
     BalanceResponse,
+    PortfolioAnalyticsResponse,
+    PortfolioConstituentAnalyticsInfo,
+    PortfolioExposureSummaryInfo,
     PositionInfo,
+    PositionSizingRequest,
+    PositionSizingResponse,
     QuoteResponse,
+    RebalancePlanResponse,
+    RebalanceRequest,
+    RebalanceTradeResponse,
+    RollingReturnInfo,
+)
+from kodiak.schemas.research import (
+    BenchmarkBarResponse,
+    BenchmarkHistoryResponse,
+    FundamentalsResponse,
 )
 from kodiak.schemas.strategies import (
     StrategyCreate,
@@ -329,6 +343,191 @@ class TestIndicatorInfo:
         schema = IndicatorInfo.from_domain(spec)
         assert schema.name == "RSI"
         assert schema.description == "Relative Strength Index"
+
+
+class TestResearchSchemas:
+    """Test research data schemas."""
+
+    def test_fundamentals_response(self) -> None:
+        response = FundamentalsResponse(
+            symbol="AAPL",
+            source="fixture",
+            as_of="2026-04-24",
+            currency="USD",
+            market_cap=Decimal("3000000000000"),
+            pe_ratio=Decimal("28.5"),
+            metadata={"sector": "Technology"},
+        )
+        assert response.symbol == "AAPL"
+        assert response.market_cap == Decimal("3000000000000")
+        assert response.metadata["sector"] == "Technology"
+
+    def test_benchmark_history_response(self) -> None:
+        bar = BenchmarkBarResponse(
+            timestamp="2024-01-02T00:00:00-05:00",
+            open=Decimal("400"),
+            high=Decimal("405"),
+            low=Decimal("399"),
+            close=Decimal("402"),
+            volume=Decimal("1000000"),
+        )
+        response = BenchmarkHistoryResponse(
+            generated_at="2026-04-24T00:00:00+00:00",
+            symbol="SPY",
+            data_source="csv",
+            timeframe="1Day",
+            start=bar.timestamp,
+            end=bar.timestamp,
+            bar_count=1,
+            first_close=Decimal("402"),
+            latest_close=Decimal("402"),
+            return_pct=Decimal("0"),
+            bars=[bar],
+        )
+        assert response.symbol == "SPY"
+        assert response.bar_count == 1
+        assert response.bars[0].close == Decimal("402")
+
+
+class TestPortfolioAnalyticsSchemas:
+    """Test portfolio analytics schemas."""
+
+    def test_portfolio_exposure_summary_info(self) -> None:
+        exposure = PortfolioExposureSummaryInfo(
+            long_exposure=Decimal("2200"),
+            short_exposure=Decimal("0"),
+            gross_exposure=Decimal("2200"),
+            net_exposure=Decimal("2200"),
+            cash_weight_pct=Decimal("31.25"),
+            invested_weight_pct=Decimal("68.75"),
+            largest_position_weight_pct=Decimal("34.375"),
+        )
+        assert exposure.cash_weight_pct == Decimal("31.25")
+
+    def test_portfolio_analytics_response(self) -> None:
+        response = PortfolioAnalyticsResponse(
+            generated_at="2026-04-23T09:30:00",
+            history_start="2024-01-01T00:00:00-05:00",
+            history_end="2024-01-05T00:00:00-05:00",
+            lookback_days=30,
+            data_source="csv",
+            benchmark_symbol="SPY",
+            methodology="snapshot replay",
+            total_equity=Decimal("3200"),
+            cash=Decimal("1000"),
+            position_count=2,
+            trading_days=4,
+            cumulative_return_pct=Decimal("5.2"),
+            benchmark_return_pct=Decimal("3.4"),
+            excess_return_pct=Decimal("1.8"),
+            annualized_volatility_pct=Decimal("12.0"),
+            benchmark_volatility_pct=Decimal("10.5"),
+            sharpe_ratio=Decimal("1.3"),
+            benchmark_correlation=Decimal("0.8"),
+            max_drawdown_pct=Decimal("2.1"),
+            exposure=PortfolioExposureSummaryInfo(
+                long_exposure=Decimal("2200"),
+                short_exposure=Decimal("0"),
+                gross_exposure=Decimal("2200"),
+                net_exposure=Decimal("2200"),
+                cash_weight_pct=Decimal("31.25"),
+                invested_weight_pct=Decimal("68.75"),
+                largest_position_weight_pct=Decimal("34.375"),
+            ),
+            rolling_returns=[
+                RollingReturnInfo(
+                    window_days=5,
+                    portfolio_return_pct=Decimal("1.0"),
+                    benchmark_return_pct=Decimal("0.8"),
+                    excess_return_pct=Decimal("0.2"),
+                )
+            ],
+            constituents=[
+                PortfolioConstituentAnalyticsInfo(
+                    symbol="AAPL",
+                    quantity=Decimal("10"),
+                    market_value=Decimal("1100"),
+                    weight_pct=Decimal("34.375"),
+                    period_return_pct=Decimal("10.0"),
+                    contribution_pct=Decimal("3.125"),
+                )
+            ],
+        )
+        assert response.benchmark_symbol == "SPY"
+        assert response.constituents[0].symbol == "AAPL"
+
+
+class TestPortfolioConstructionSchemas:
+    """Test sizing and rebalancing schemas."""
+
+    def test_position_sizing_request(self) -> None:
+        request = PositionSizingRequest(
+            symbol="AAPL",
+            method="target_weight",
+            target_weight_pct=Decimal("10"),
+        )
+        assert request.symbol == "AAPL"
+        assert request.method == "target_weight"
+
+    def test_position_sizing_response(self) -> None:
+        response = PositionSizingResponse(
+            generated_at="2026-04-23T10:00:00",
+            symbol="AAPL",
+            method="target_weight",
+            reference_price=Decimal("100"),
+            current_qty=Decimal("10"),
+            target_qty=Decimal("20"),
+            delta_qty=Decimal("10"),
+            current_position_value=Decimal("1000"),
+            target_position_value=Decimal("2000"),
+            estimated_order_value=Decimal("1000"),
+            estimated_weight_pct=Decimal("10"),
+            target_weight_pct=Decimal("10"),
+            target_value=Decimal("2000"),
+            risk_budget=None,
+            stop_loss_pct=None,
+            capped_by=["available_capital"],
+        )
+        assert response.delta_qty == Decimal("10")
+
+    def test_rebalance_request_and_response(self) -> None:
+        request = RebalanceRequest(
+            target_weights={"AAPL": Decimal("20")},
+            drift_threshold_pct=Decimal("1"),
+        )
+        assert request.target_weights["AAPL"] == Decimal("20")
+
+        response = RebalancePlanResponse(
+            generated_at="2026-04-23T10:00:00",
+            total_equity=Decimal("20000"),
+            current_cash=Decimal("10000"),
+            projected_cash=Decimal("8000"),
+            current_cash_weight_pct=Decimal("50"),
+            projected_cash_weight_pct=Decimal("40"),
+            drift_threshold_pct=Decimal("1"),
+            cash_buffer_pct=Decimal("5"),
+            liquidate_unmentioned=False,
+            rebalance_required=True,
+            trade_count=1,
+            estimated_turnover_pct=Decimal("10"),
+            estimated_net_cash_change=Decimal("-2000"),
+            target_weights={"AAPL": Decimal("20")},
+            trades=[
+                RebalanceTradeResponse(
+                    symbol="AAPL",
+                    side="buy",
+                    qty=Decimal("20"),
+                    reference_price=Decimal("100"),
+                    estimated_value=Decimal("2000"),
+                    current_qty=Decimal("0"),
+                    target_qty=Decimal("20"),
+                    current_weight_pct=Decimal("0"),
+                    target_weight_pct=Decimal("20"),
+                    drift_pct=Decimal("20"),
+                )
+            ],
+        )
+        assert response.trade_count == 1
 
 
 class TestEngineStatus:

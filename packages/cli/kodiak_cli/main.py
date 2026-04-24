@@ -9,19 +9,20 @@ This module handles:
 """
 
 import json as json_lib
+import os
+import tempfile
 from datetime import datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 
 import click
-from rich.console import Console
-from rich.table import Table
-
 from kodiak import __version__
 from kodiak.audit import set_audit_source
 from kodiak.errors import AppError
 from kodiak.utils.config import Environment, load_config
 from kodiak.utils.logging import setup_logging
+from rich.console import Console
+from rich.table import Table
 
 console = Console()
 
@@ -54,6 +55,19 @@ def _get_json_flag(ctx: click.Context) -> bool:
     return ctx.obj.get("json", False)
 
 
+def _append_bootstrap_debug_log(message: str) -> None:
+    """Best-effort bootstrap logging that never blocks CLI startup."""
+    log_path = os.getenv("KODIAK_CLI_DEBUG_LOG")
+    debug_log = Path(log_path) if log_path else Path(tempfile.gettempdir()) / "kodiak_mcp_debug.log"
+
+    try:
+        debug_log.parent.mkdir(parents=True, exist_ok=True)
+        with open(debug_log, "a") as f:
+            f.write(f"{datetime.now().isoformat()} | {message}\n")
+    except OSError:
+        pass
+
+
 # =============================================================================
 # CLI Group
 # =============================================================================
@@ -68,14 +82,9 @@ def cli(ctx: click.Context, prod: bool, as_json: bool) -> None:
     """Kodiak - CLI-based automated trading system."""
     import sys
     import traceback
-    from datetime import datetime
-    from pathlib import Path
-
-    log_file = Path.home() / "kodiak_mcp_debug.log"
 
     try:
-        with open(log_file, "a") as f:
-            f.write(f"{datetime.now().isoformat()} | CLI entry point called\n")
+        _append_bootstrap_debug_log("CLI entry point called")
 
         ctx.ensure_object(dict)
         set_audit_source("cli")
@@ -87,12 +96,10 @@ def cli(ctx: click.Context, prod: bool, as_json: bool) -> None:
         logger = setup_logging(log_dir=config.log_dir, log_to_file=True)
         ctx.obj["logger"] = logger
 
-        with open(log_file, "a") as f:
-            f.write(f"{datetime.now().isoformat()} | CLI setup complete\n")
+        _append_bootstrap_debug_log("CLI setup complete")
     except Exception as e:
-        with open(log_file, "a") as f:
-            f.write(f"{datetime.now().isoformat()} | CLI error: {e}\n")
-            f.write(traceback.format_exc())
+        _append_bootstrap_debug_log(f"CLI error: {e}")
+        _append_bootstrap_debug_log(traceback.format_exc())
         print(f"CLI initialization error: {e}", file=sys.stderr, flush=True)
         print(traceback.format_exc(), file=sys.stderr, flush=True)
         raise

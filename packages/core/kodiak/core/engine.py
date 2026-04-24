@@ -1,10 +1,12 @@
 """Trading engine - main execution loop."""
 
 import fcntl
+import logging
 import os
 import signal
 import time
 from datetime import datetime
+from io import TextIOWrapper
 from pathlib import Path
 
 from kodiak.api.broker import Broker
@@ -13,7 +15,7 @@ from kodiak.oms.store import load_orders, save_order
 from kodiak.strategies.evaluator import StrategyEvaluator
 from kodiak.strategies.loader import get_active_strategies
 from kodiak.utils.config import StrategyDefaults
-from kodiak.utils.logging import get_logger
+from kodiak.utils.logging import get_logger, log_event
 
 
 class EngineAlreadyRunningError(Exception):
@@ -62,8 +64,12 @@ class TradingEngine:
         self._running = False
         self._stop_requested = False
         self.orders_dir = orders_dir
-        self._lock_file = None
-        self._lock_fd = None
+        self._lock_file: Path | None = None
+        self._lock_fd: TextIOWrapper | None = None
+        self._cycle_counter = 0
+        self._last_cycle_market_open = False
+        self._last_cycle_strategy_count = 0
+        self._last_cycle_scheduled_enabled_count = 0
 
     def _acquire_lock(self) -> None:
         """Acquire exclusive lock to prevent multiple engine instances.
@@ -196,16 +202,22 @@ class TradingEngine:
     def _run_loop(self) -> None:
         """Main trading loop."""
         while not self._stop_requested:
-            cycle_start = time.time()
+            cycle_start = time.perf_counter()
+            strategy_ids: list[str] = []
 
             try:
-                self._run_cycle()
+                strategy_ids = self._run_cycle()
             except Exception as e:
                 self.logger.error(f"Error in trading cycle: {e}")
 
             # Sleep until next interval
-            elapsed = time.time() - cycle_start
+            elapsed = time.perf_counter() - cycle_start
             sleep_time = max(0, self.poll_interval - elapsed)
+            self._log_cycle_metrics(
+                action_count=len(strategy_ids),
+                duration_ms=round(elapsed * 1000, 2),
+                sleep_time_ms=round(sleep_time * 1000, 2),
+            )
 
             if sleep_time > 0 and not self._stop_requested:
                 time.sleep(sleep_time)
@@ -213,15 +225,19 @@ class TradingEngine:
     def _run_cycle(self) -> list[str]:
         """Run a single evaluation cycle. Returns list of strategy IDs that had actions."""
         # Check scheduled strategies and enable them if time has arrived
-        self._check_scheduled_strategies()
+        self._last_cycle_scheduled_enabled_count = self._check_scheduled_strategies()
 
         # Check if market is open
-        if not self.broker.is_market_open():
+        market_open = self.broker.is_market_open()
+        self._last_cycle_market_open = market_open
+        if not market_open:
+            self._last_cycle_strategy_count = 0
             self.logger.debug("Market closed, skipping cycle")
             return []
 
         # Evaluate strategies
         strategies = get_active_strategies()
+        self._last_cycle_strategy_count = len(strategies)
         if strategies:
             self.logger.debug(f"Evaluating {len(strategies)} active strategies")
             strategy_ids = self.strategy_evaluator.run_once(strategies, dry_run=self.dry_run)
@@ -231,12 +247,13 @@ class TradingEngine:
         self.logger.debug("No active strategies")
         return []
 
-    def _check_scheduled_strategies(self) -> None:
+    def _check_scheduled_strategies(self) -> int:
         """Check scheduled strategies and enable them when schedule time arrives."""
         from kodiak.strategies.loader import load_strategies, save_strategy
 
         strategies = load_strategies()
         now = datetime.now()
+        enabled_count = 0
 
         for strategy in strategies:
             if strategy.schedule_enabled and strategy.schedule_at:
@@ -250,6 +267,32 @@ class TradingEngine:
                     strategy.schedule_enabled = False
                     strategy.schedule_at = None
                     save_strategy(strategy)
+                    enabled_count += 1
+
+        return enabled_count
+
+    def _log_cycle_metrics(
+        self,
+        *,
+        action_count: int,
+        duration_ms: float,
+        sleep_time_ms: float,
+    ) -> None:
+        """Emit structured metrics for the most recent engine cycle."""
+        self._cycle_counter += 1
+        log_event(
+            self.logger,
+            logging.INFO,
+            "engine_cycle_complete",
+            cycle=self._cycle_counter,
+            duration_ms=duration_ms,
+            sleep_time_ms=sleep_time_ms,
+            market_open=self._last_cycle_market_open,
+            strategy_count=self._last_cycle_strategy_count,
+            action_count=action_count,
+            scheduled_enabled_count=self._last_cycle_scheduled_enabled_count,
+            dry_run=self.dry_run,
+        )
 
     def run_once(self, acquire_lock: bool = False) -> list[str]:
         """Run a single evaluation cycle (scheduled strategies check + market check + evaluate).
@@ -266,7 +309,15 @@ class TradingEngine:
         if acquire_lock:
             self._acquire_lock()
         try:
-            return self._run_cycle()
+            cycle_start = time.perf_counter()
+            strategy_ids = self._run_cycle()
+            elapsed = time.perf_counter() - cycle_start
+            self._log_cycle_metrics(
+                action_count=len(strategy_ids),
+                duration_ms=round(elapsed * 1000, 2),
+                sleep_time_ms=0.0,
+            )
+            return strategy_ids
         finally:
             if acquire_lock:
                 self._release_lock()

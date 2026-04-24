@@ -6,7 +6,7 @@ from pathlib import Path
 import pandas as pd
 import pytz
 
-from kodiak.data.providers.base import DataProvider, TimeFrame
+from kodiak.data.providers.base import DataProvider, TimeFrame, validate_ohlcv_frame
 from kodiak.utils.logging import get_logger
 
 _EASTERN_TZ = pytz.timezone("US/Eastern")
@@ -153,11 +153,7 @@ class CSVDataProvider(DataProvider):
         df = df.rename(columns=str.lower)
         df = df.astype("float64")
 
-        # Validate data quality
-        if df.isnull().any().any():
-            raise ValueError(f"CSV {file_path.name} contains NaN values")
-
         if df.empty:
             raise ValueError(f"CSV {file_path.name} is empty")
 
-        return df
+        return validate_ohlcv_frame(df, file_path.stem, "CSV")

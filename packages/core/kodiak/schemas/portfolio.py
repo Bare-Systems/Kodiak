@@ -8,6 +8,17 @@ from typing import TYPE_CHECKING
 from pydantic import BaseModel
 
 if TYPE_CHECKING:
+    from kodiak.analysis.allocation import (
+        PositionSizingResult,
+        RebalancePlan,
+        RebalanceTrade,
+    )
+    from kodiak.analysis.portfolio import (
+        PortfolioAnalyticsResult,
+        PortfolioConstituentAnalytics,
+        PortfolioExposureSummary,
+        RollingReturn,
+    )
     from kodiak.api.broker import Account, Position, Quote
     from kodiak.core.portfolio import PortfolioSummary, PositionDetail
 
@@ -125,6 +136,269 @@ class PortfolioResponse(BaseModel):
             total_pnl_today=summary.total_pnl_today,
             position_count=summary.position_count,
             positions=pos_list,
+        )
+
+
+class PortfolioExposureSummaryInfo(BaseModel):
+    """Exposure summary for current portfolio holdings."""
+
+    long_exposure: Decimal
+    short_exposure: Decimal
+    gross_exposure: Decimal
+    net_exposure: Decimal
+    cash_weight_pct: Decimal
+    invested_weight_pct: Decimal
+    largest_position_weight_pct: Decimal
+
+    @classmethod
+    def from_domain(cls, exposure: PortfolioExposureSummary) -> PortfolioExposureSummaryInfo:
+        return cls(
+            long_exposure=exposure.long_exposure,
+            short_exposure=exposure.short_exposure,
+            gross_exposure=exposure.gross_exposure,
+            net_exposure=exposure.net_exposure,
+            cash_weight_pct=exposure.cash_weight_pct,
+            invested_weight_pct=exposure.invested_weight_pct,
+            largest_position_weight_pct=exposure.largest_position_weight_pct,
+        )
+
+
+class RollingReturnInfo(BaseModel):
+    """Trailing return comparison over a fixed window."""
+
+    window_days: int
+    portfolio_return_pct: Decimal | None
+    benchmark_return_pct: Decimal | None
+    excess_return_pct: Decimal | None
+
+    @classmethod
+    def from_domain(cls, rolling_return: RollingReturn) -> RollingReturnInfo:
+        return cls(
+            window_days=rolling_return.window_days,
+            portfolio_return_pct=rolling_return.portfolio_return_pct,
+            benchmark_return_pct=rolling_return.benchmark_return_pct,
+            excess_return_pct=rolling_return.excess_return_pct,
+        )
+
+
+class PortfolioConstituentAnalyticsInfo(BaseModel):
+    """Per-position analytics inside the snapshot replay."""
+
+    symbol: str
+    quantity: Decimal
+    market_value: Decimal
+    weight_pct: Decimal
+    period_return_pct: Decimal | None
+    contribution_pct: Decimal | None
+
+    @classmethod
+    def from_domain(
+        cls,
+        constituent: PortfolioConstituentAnalytics,
+    ) -> PortfolioConstituentAnalyticsInfo:
+        return cls(
+            symbol=constituent.symbol,
+            quantity=constituent.quantity,
+            market_value=constituent.market_value,
+            weight_pct=constituent.weight_pct,
+            period_return_pct=constituent.period_return_pct,
+            contribution_pct=constituent.contribution_pct,
+        )
+
+
+class PortfolioAnalyticsResponse(BaseModel):
+    """Snapshot-based portfolio analytics response."""
+
+    generated_at: str
+    history_start: str
+    history_end: str
+    lookback_days: int
+    data_source: str
+    benchmark_symbol: str
+    methodology: str
+    total_equity: Decimal
+    cash: Decimal
+    position_count: int
+    trading_days: int
+    cumulative_return_pct: Decimal
+    benchmark_return_pct: Decimal
+    excess_return_pct: Decimal
+    annualized_volatility_pct: Decimal | None
+    benchmark_volatility_pct: Decimal | None
+    sharpe_ratio: Decimal | None
+    benchmark_correlation: Decimal | None
+    max_drawdown_pct: Decimal
+    exposure: PortfolioExposureSummaryInfo
+    rolling_returns: list[RollingReturnInfo]
+    constituents: list[PortfolioConstituentAnalyticsInfo]
+
+    @classmethod
+    def from_domain(cls, result: PortfolioAnalyticsResult) -> PortfolioAnalyticsResponse:
+        return cls(
+            generated_at=result.generated_at.isoformat(),
+            history_start=result.history_start.isoformat(),
+            history_end=result.history_end.isoformat(),
+            lookback_days=result.lookback_days,
+            data_source=result.data_source,
+            benchmark_symbol=result.benchmark_symbol,
+            methodology=result.methodology,
+            total_equity=result.total_equity,
+            cash=result.cash,
+            position_count=result.position_count,
+            trading_days=result.trading_days,
+            cumulative_return_pct=result.cumulative_return_pct,
+            benchmark_return_pct=result.benchmark_return_pct,
+            excess_return_pct=result.excess_return_pct,
+            annualized_volatility_pct=result.annualized_volatility_pct,
+            benchmark_volatility_pct=result.benchmark_volatility_pct,
+            sharpe_ratio=result.sharpe_ratio,
+            benchmark_correlation=result.benchmark_correlation,
+            max_drawdown_pct=result.max_drawdown_pct,
+            exposure=PortfolioExposureSummaryInfo.from_domain(result.exposure),
+            rolling_returns=[RollingReturnInfo.from_domain(item) for item in result.rolling_returns],
+            constituents=[
+                PortfolioConstituentAnalyticsInfo.from_domain(item)
+                for item in result.constituents
+            ],
+        )
+
+
+class PositionSizingRequest(BaseModel):
+    """Request for sizing a position."""
+
+    symbol: str
+    method: str
+    price: Decimal | None = None
+    target_value: Decimal | None = None
+    target_weight_pct: Decimal | None = None
+    risk_budget: Decimal | None = None
+    stop_loss_pct: Decimal | None = None
+    available_capital: Decimal | None = None
+    max_position_value: Decimal | None = None
+    max_position_weight_pct: Decimal | None = None
+    lot_size: int = 1
+
+
+class PositionSizingResponse(BaseModel):
+    """Calculated target size for a symbol."""
+
+    generated_at: str
+    symbol: str
+    method: str
+    reference_price: Decimal
+    current_qty: Decimal
+    target_qty: Decimal
+    delta_qty: Decimal
+    current_position_value: Decimal
+    target_position_value: Decimal
+    estimated_order_value: Decimal
+    estimated_weight_pct: Decimal
+    target_weight_pct: Decimal | None
+    target_value: Decimal | None
+    risk_budget: Decimal | None
+    stop_loss_pct: Decimal | None
+    capped_by: list[str]
+
+    @classmethod
+    def from_domain(cls, result: PositionSizingResult) -> PositionSizingResponse:
+        return cls(
+            generated_at=result.generated_at.isoformat(),
+            symbol=result.symbol,
+            method=result.method,
+            reference_price=result.reference_price,
+            current_qty=result.current_qty,
+            target_qty=result.target_qty,
+            delta_qty=result.delta_qty,
+            current_position_value=result.current_position_value,
+            target_position_value=result.target_position_value,
+            estimated_order_value=result.estimated_order_value,
+            estimated_weight_pct=result.estimated_weight_pct,
+            target_weight_pct=result.target_weight_pct,
+            target_value=result.target_value,
+            risk_budget=result.risk_budget,
+            stop_loss_pct=result.stop_loss_pct,
+            capped_by=result.capped_by,
+        )
+
+
+class RebalanceRequest(BaseModel):
+    """Request for a dry-run rebalance plan."""
+
+    target_weights: dict[str, Decimal]
+    drift_threshold_pct: Decimal = Decimal("1")
+    cash_buffer_pct: Decimal = Decimal("0")
+    liquidate_unmentioned: bool = False
+    lot_size: int = 1
+    max_position_weight_pct: Decimal | None = None
+
+
+class RebalanceTradeResponse(BaseModel):
+    """One proposed rebalance trade."""
+
+    symbol: str
+    side: str
+    qty: Decimal
+    reference_price: Decimal
+    estimated_value: Decimal
+    current_qty: Decimal
+    target_qty: Decimal
+    current_weight_pct: Decimal
+    target_weight_pct: Decimal
+    drift_pct: Decimal
+
+    @classmethod
+    def from_domain(cls, trade: RebalanceTrade) -> RebalanceTradeResponse:
+        return cls(
+            symbol=trade.symbol,
+            side=trade.side,
+            qty=trade.qty,
+            reference_price=trade.reference_price,
+            estimated_value=trade.estimated_value,
+            current_qty=trade.current_qty,
+            target_qty=trade.target_qty,
+            current_weight_pct=trade.current_weight_pct,
+            target_weight_pct=trade.target_weight_pct,
+            drift_pct=trade.drift_pct,
+        )
+
+
+class RebalancePlanResponse(BaseModel):
+    """Dry-run rebalance plan response."""
+
+    generated_at: str
+    total_equity: Decimal
+    current_cash: Decimal
+    projected_cash: Decimal
+    current_cash_weight_pct: Decimal
+    projected_cash_weight_pct: Decimal
+    drift_threshold_pct: Decimal
+    cash_buffer_pct: Decimal
+    liquidate_unmentioned: bool
+    rebalance_required: bool
+    trade_count: int
+    estimated_turnover_pct: Decimal
+    estimated_net_cash_change: Decimal
+    target_weights: dict[str, Decimal]
+    trades: list[RebalanceTradeResponse]
+
+    @classmethod
+    def from_domain(cls, plan: RebalancePlan) -> RebalancePlanResponse:
+        return cls(
+            generated_at=plan.generated_at.isoformat(),
+            total_equity=plan.total_equity,
+            current_cash=plan.current_cash,
+            projected_cash=plan.projected_cash,
+            current_cash_weight_pct=plan.current_cash_weight_pct,
+            projected_cash_weight_pct=plan.projected_cash_weight_pct,
+            drift_threshold_pct=plan.drift_threshold_pct,
+            cash_buffer_pct=plan.cash_buffer_pct,
+            liquidate_unmentioned=plan.liquidate_unmentioned,
+            rebalance_required=plan.rebalance_required,
+            trade_count=plan.trade_count,
+            estimated_turnover_pct=plan.estimated_turnover_pct,
+            estimated_net_cash_change=plan.estimated_net_cash_change,
+            target_weights=plan.target_weights,
+            trades=[RebalanceTradeResponse.from_domain(trade) for trade in plan.trades],
         )
 
 

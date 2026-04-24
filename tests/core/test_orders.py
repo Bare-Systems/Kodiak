@@ -3,7 +3,6 @@
 from decimal import Decimal
 
 import pytest
-
 from kodiak.models.order import Order, OrderSide, OrderStatus, OrderType
 
 

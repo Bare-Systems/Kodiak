@@ -3,9 +3,9 @@
 from decimal import Decimal
 
 import pytest
+from kodiak.api.broker import OrderSide, OrderStatus, OrderType, Position
 
 from tests.core.mocks import MockBroker
-from kodiak.api.broker import OrderSide, OrderStatus, OrderType, Position
 
 
 @pytest.fixture

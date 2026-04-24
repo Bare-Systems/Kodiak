@@ -4,7 +4,6 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
-
 from kodiak.app.engine import get_engine_status, stop_engine
 from kodiak.app.indicators import describe_indicator, list_all_indicators
 from kodiak.app.strategies import (
@@ -171,7 +170,6 @@ class TestCLIJsonFlag:
     def test_cli_status_json(self) -> None:
         """Status command should accept --json flag."""
         from click.testing import CliRunner
-
         from kodiak_cli.main import cli
 
         runner = CliRunner()
@@ -181,7 +179,6 @@ class TestCLIJsonFlag:
     def test_cli_strategy_list_json(self) -> None:
         """Strategy list should accept --json flag."""
         from click.testing import CliRunner
-
         from kodiak_cli.main import cli
 
         runner = CliRunner()

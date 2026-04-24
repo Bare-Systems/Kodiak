@@ -9,11 +9,16 @@ from kodiak.mcp.tools import (
     _ALL_TOOLS,
     analyze_performance,
     build_server,
+    calculate_position_size,
     describe_indicator,
     get_balance,
+    get_benchmark_history,
+    get_fundamentals,
     get_portfolio,
+    get_portfolio_analytics,
     get_positions,
     get_quote,
+    get_rebalance_plan,
     get_safety_status,
     get_status,
     get_today_pnl,
@@ -49,7 +54,7 @@ class TestMCPServerSetup:
     def test_tool_count(self) -> None:
         """Should have expected number of MCP tools registered."""
         tools = asyncio.run(mcp.list_tools())
-        assert len(tools) == 33
+        assert len(tools) == 38
 
     def test_all_tools_have_descriptions(self) -> None:
         """Every registered tool should have a non-empty description."""
@@ -124,8 +129,33 @@ class TestPortfolioTools:
         parsed = json.loads(result)
         assert isinstance(parsed, dict)
 
+    def test_get_portfolio_analytics_returns_json(self) -> None:
+        result = get_portfolio_analytics(lookback_days=30, benchmark_symbol="SPY", end_date="2024-12-31")
+        parsed = json.loads(result)
+        assert isinstance(parsed, dict)
+
+    def test_calculate_position_size_returns_json(self) -> None:
+        result = calculate_position_size(symbol="AAPL", method="target_weight", target_weight_pct=10)
+        parsed = json.loads(result)
+        assert isinstance(parsed, dict)
+
+    def test_get_rebalance_plan_returns_json(self) -> None:
+        result = get_rebalance_plan(target_weights={"AAPL": 10, "MSFT": 10})
+        parsed = json.loads(result)
+        assert isinstance(parsed, dict)
+
     def test_get_quote_returns_json(self) -> None:
         result = get_quote("AAPL")
+        parsed = json.loads(result)
+        assert isinstance(parsed, dict)
+
+    def test_get_fundamentals_returns_json(self) -> None:
+        result = get_fundamentals("AAPL")
+        parsed = json.loads(result)
+        assert isinstance(parsed, dict)
+
+    def test_get_benchmark_history_returns_json(self) -> None:
+        result = get_benchmark_history("SPY", start="2024-01-01", end="2024-01-31")
         parsed = json.loads(result)
         assert isinstance(parsed, dict)
 
@@ -258,7 +288,6 @@ class TestMCPCLICommand:
 
     def test_mcp_command_exists(self) -> None:
         from click.testing import CliRunner
-
         from kodiak_cli.main import cli
 
         runner = CliRunner()

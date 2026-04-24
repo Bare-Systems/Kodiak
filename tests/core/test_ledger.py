@@ -6,7 +6,6 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
-
 from kodiak.api.broker import OrderSide, OrderStatus
 from kodiak.data.ledger import TradeLedger, TradeRecord
 

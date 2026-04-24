@@ -3,6 +3,7 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
 from enum import Enum
+from math import isfinite
 
 import pandas as pd
 
@@ -78,3 +79,18 @@ class DataProvider(ABC):
             Index(['open', 'high', 'low', 'close', 'volume'], dtype='object')
         """
         pass
+
+
+def validate_ohlcv_frame(df: pd.DataFrame, symbol: str, source: str) -> pd.DataFrame:
+    """Validate normalized OHLCV data quality."""
+    required = ["open", "high", "low", "close", "volume"]
+    missing = [col for col in required if col not in df.columns]
+    if missing:
+        raise ValueError(f"{source} data for {symbol} missing columns: {missing}")
+    if df[required].isnull().any().any():
+        raise ValueError(f"{source} data for {symbol} contains NaN values")
+
+    finite = df[required].apply(lambda series: series.map(lambda value: isfinite(float(value))))
+    if not finite.all().all():
+        raise ValueError(f"{source} data for {symbol} contains non-finite values")
+    return df

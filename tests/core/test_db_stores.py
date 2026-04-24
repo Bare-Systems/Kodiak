@@ -29,10 +29,10 @@ requires_postgres = pytest.mark.skipif(
 def test_strategy_loader_routes_to_yaml_without_db_url(monkeypatch: pytest.MonkeyPatch) -> None:
     """When KODIAK_DATABASE_URL is unset, loader uses the YAML path."""
     monkeypatch.delenv("KODIAK_DATABASE_URL", raising=False)
-    from kodiak.strategies import loader
-
     # Reload to clear cached env check
     import importlib
+
+    from kodiak.strategies import loader
     importlib.reload(loader)
 
     assert not loader._use_postgres()
@@ -41,8 +41,9 @@ def test_strategy_loader_routes_to_yaml_without_db_url(monkeypatch: pytest.Monke
 def test_strategy_loader_routes_to_postgres_with_db_url(monkeypatch: pytest.MonkeyPatch) -> None:
     """When KODIAK_DATABASE_URL is set, _use_postgres() is True."""
     monkeypatch.setenv("KODIAK_DATABASE_URL", "postgresql://fake/testdb")
-    from kodiak.strategies import loader
     import importlib
+
+    from kodiak.strategies import loader
     importlib.reload(loader)
 
     assert loader._use_postgres()
@@ -50,8 +51,9 @@ def test_strategy_loader_routes_to_postgres_with_db_url(monkeypatch: pytest.Monk
 
 def test_order_store_routes_to_yaml_without_db_url(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("KODIAK_DATABASE_URL", raising=False)
-    from kodiak.oms import store
     import importlib
+
+    from kodiak.oms import store
     importlib.reload(store)
 
     assert not store._use_postgres()
@@ -59,8 +61,9 @@ def test_order_store_routes_to_yaml_without_db_url(monkeypatch: pytest.MonkeyPat
 
 def test_order_store_routes_to_postgres_with_db_url(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("KODIAK_DATABASE_URL", "postgresql://fake/testdb")
-    from kodiak.oms import store
     import importlib
+
+    from kodiak.oms import store
     importlib.reload(store)
 
     assert store._use_postgres()
@@ -166,7 +169,12 @@ def test_postgres_strategy_roundtrip() -> None:
 @requires_postgres
 def test_postgres_strategy_upsert() -> None:
     """Saving the same strategy twice updates rather than duplicates."""
-    from kodiak.db.pg_strategy_store import delete_strategy, get_strategy, load_strategies, save_strategy
+    from kodiak.db.pg_strategy_store import (
+        delete_strategy,
+        get_strategy,
+        load_strategies,
+        save_strategy,
+    )
     from kodiak.strategies.models import Strategy, StrategyPhase, StrategyType
 
     strat = Strategy(

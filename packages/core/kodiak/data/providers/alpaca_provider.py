@@ -12,7 +12,7 @@ from alpaca.data.requests import StockBarsRequest
 from alpaca.data.timeframe import TimeFrame as AlpacaTimeFrame
 from alpaca.data.timeframe import TimeFrameUnit
 
-from kodiak.data.providers.base import DataProvider, TimeFrame
+from kodiak.data.providers.base import DataProvider, TimeFrame, validate_ohlcv_frame
 from kodiak.utils.logging import get_logger
 
 _EASTERN_TZ = pytz.timezone("US/Eastern")
@@ -116,7 +116,4 @@ def _normalize_bars(df: pd.DataFrame, symbol: str) -> pd.DataFrame:
 
     df = df.astype("float64")
 
-    if df.isnull().any().any():
-        raise ValueError(f"Alpaca data for {symbol} contains NaN values")
-
-    return df
+    return validate_ohlcv_frame(df, symbol, "Alpaca")

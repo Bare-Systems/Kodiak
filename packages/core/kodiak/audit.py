@@ -54,6 +54,14 @@ def set_audit_context(
         _audit_client_ip.set(client_ip)
 
 
+def clear_audit_context() -> None:
+    """Clear audit metadata for the current async context."""
+    _audit_actor.set(None)
+    _audit_request_id.set(None)
+    _audit_role.set(None)
+    _audit_client_ip.set(None)
+
+
 def log_action(
     action: str,
     details: dict[str, Any],

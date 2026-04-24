@@ -11,7 +11,6 @@ from typing import Any
 
 import pytest
 from click.testing import CliRunner
-
 from kodiak_cli.main import cli
 
 

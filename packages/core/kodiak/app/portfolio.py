@@ -2,20 +2,36 @@
 
 from __future__ import annotations
 
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
-from typing import Any
+from typing import Any, cast
 
 from kodiak.app import get_broker
+from kodiak.backtest.data import load_data_for_backtest
 from kodiak.errors import BrokerError
+from kodiak.errors import ValidationError as AppValidationError
 from kodiak.schemas.portfolio import (
     AccountInfo,
     BalanceResponse,
+    PortfolioAnalyticsResponse,
     PortfolioResponse,
     PositionInfo,
+    PositionSizingRequest,
+    PositionSizingResponse,
     QuoteResponse,
+    RebalancePlanResponse,
+    RebalanceRequest,
 )
 from kodiak.strategies.loader import load_strategies
 from kodiak.utils.config import Config
+
+
+def _wrap_broker_error(action: str, exc: Exception) -> BrokerError:
+    """Normalize broker/network failures into app-layer errors."""
+    return BrokerError(
+        message=f"Failed to {action}: {exc}",
+        code="BROKER_FETCH_FAILED",
+    )
 
 
 def get_balance(config: Config) -> BalanceResponse:
@@ -76,7 +92,12 @@ def get_positions(config: Config) -> list[PositionInfo]:
         List of position info schemas.
     """
     broker = get_broker(config)
-    positions_list = broker.get_positions()
+    try:
+        positions_list = broker.get_positions()
+    except Exception as e:
+        if "ConfigurationError" in type(e).__name__:
+            raise
+        raise _wrap_broker_error("fetch positions", e)
     return [PositionInfo.from_domain(p) for p in positions_list]
 
 
@@ -96,8 +117,13 @@ def get_portfolio_summary(config: Config) -> PortfolioResponse:
     ledger = TradeLedger()
     pf = Portfolio(broker, ledger)
 
-    summary = pf.get_summary()
-    positions = pf.get_positions_detail()
+    try:
+        summary = pf.get_summary()
+        positions = pf.get_positions_detail()
+    except Exception as e:
+        if "ConfigurationError" in type(e).__name__:
+            raise
+        raise _wrap_broker_error("fetch portfolio summary", e)
 
     return PortfolioResponse.from_domain(summary, positions)
 
@@ -113,8 +139,190 @@ def get_quote(config: Config, symbol: str) -> QuoteResponse:
         Quote response schema.
     """
     broker = get_broker(config)
-    q = broker.get_quote(symbol.upper())
+    try:
+        q = broker.get_quote(symbol.upper())
+    except Exception as e:
+        if "ConfigurationError" in type(e).__name__:
+            raise
+        raise _wrap_broker_error(f"fetch quote for {symbol.upper()}", e)
     return QuoteResponse.from_domain(q)
+
+
+def get_portfolio_analytics(
+    config: Config,
+    lookback_days: int = 252,
+    benchmark_symbol: str = "SPY",
+    end_date: date | None = None,
+) -> PortfolioAnalyticsResponse:
+    """Get snapshot-based portfolio analytics versus a benchmark."""
+    from kodiak.analysis.portfolio import compute_portfolio_analytics
+
+    if lookback_days < 1:
+        raise AppValidationError(
+            message="lookback_days must be at least 1",
+            details={"lookback_days": lookback_days},
+            suggestion="Use a positive number of trading days such as 30, 63, or 252.",
+        )
+
+    broker = get_broker(config)
+    try:
+        account = broker.get_account()
+        positions = broker.get_positions()
+    except Exception as e:
+        if "ConfigurationError" in type(e).__name__:
+            raise
+        raise _wrap_broker_error("fetch account and positions for portfolio analytics", e)
+
+    history_end = datetime.combine(end_date, time.max) if end_date else datetime.now()
+    # Over-fetch calendar days so we can still get enough trading sessions.
+    history_start = history_end - timedelta(days=max(lookback_days * 2, 30))
+
+    symbols = [position.symbol.upper() for position in positions]
+    benchmark_symbol = benchmark_symbol.upper()
+    history_symbols = list(dict.fromkeys([*symbols, benchmark_symbol]))
+
+    try:
+        history = load_data_for_backtest(
+            symbols=history_symbols,
+            start_date=history_start,
+            end_date=history_end,
+            data_source=config.data.source,
+            data_dir=config.data.csv_dir,
+            config=config,
+        )
+    except (FileNotFoundError, ValueError) as exc:
+        raise AppValidationError(
+            message="Portfolio analytics requires historical price data for the current holdings and benchmark.",
+            code="PORTFOLIO_ANALYTICS_DATA_UNAVAILABLE",
+            details={
+                "symbols": history_symbols,
+                "benchmark_symbol": benchmark_symbol,
+                "data_source": config.data.source,
+                "reason": str(exc),
+            },
+            suggestion=(
+                "Provide matching historical data (for example via HISTORICAL_DATA_DIR or Alpaca), "
+                "or pass an end_date that matches the available dataset."
+            ),
+        )
+
+    try:
+        analytics = compute_portfolio_analytics(
+            account=account,
+            positions=positions,
+            price_history=history,
+            benchmark_symbol=benchmark_symbol,
+            data_source=config.data.source,
+            lookback_days=lookback_days,
+        )
+    except ValueError as exc:
+        raise AppValidationError(
+            message=str(exc),
+            code="PORTFOLIO_ANALYTICS_INVALID_HISTORY",
+            details={
+                "symbols": history_symbols,
+                "benchmark_symbol": benchmark_symbol,
+            },
+            suggestion="Use a longer dataset or shorten lookback_days so at least two aligned observations remain.",
+        )
+
+    return PortfolioAnalyticsResponse.from_domain(analytics)
+
+
+def calculate_position_size_app(
+    config: Config,
+    request: PositionSizingRequest,
+) -> PositionSizingResponse:
+    """Calculate a recommended target size for a symbol."""
+    from kodiak.analysis.allocation import calculate_position_size
+
+    broker = get_broker(config)
+    symbol = request.symbol.upper()
+    try:
+        account = broker.get_account()
+        current_position = broker.get_position(symbol)
+        if request.price is not None:
+            reference_price = request.price
+        elif current_position:
+            reference_price = current_position.current_price
+        else:
+            reference_price = broker.get_quote(symbol).last
+    except Exception as e:
+        if "ConfigurationError" in type(e).__name__:
+            raise
+        raise _wrap_broker_error(f"fetch sizing inputs for {symbol}", e)
+
+    try:
+        result = calculate_position_size(
+            symbol=symbol,
+            method=request.method,
+            reference_price=reference_price,
+            account=account,
+            current_qty=current_position.qty if current_position else Decimal("0"),
+            target_value=request.target_value,
+            target_weight_pct=request.target_weight_pct,
+            risk_budget=request.risk_budget,
+            stop_loss_pct=request.stop_loss_pct,
+            available_capital=request.available_capital,
+            max_position_value=request.max_position_value,
+            max_position_weight_pct=request.max_position_weight_pct,
+            lot_size=request.lot_size,
+        )
+    except ValueError as exc:
+        raise AppValidationError(
+            message=str(exc),
+            code="POSITION_SIZING_INVALID",
+        )
+
+    return PositionSizingResponse.from_domain(result)
+
+
+def get_rebalance_plan_app(
+    config: Config,
+    request: RebalanceRequest,
+) -> RebalancePlanResponse:
+    """Generate a dry-run rebalance plan."""
+    from kodiak.analysis.allocation import generate_rebalance_plan
+
+    broker = get_broker(config)
+    try:
+        account = broker.get_account()
+        positions = broker.get_positions()
+    except Exception as e:
+        if "ConfigurationError" in type(e).__name__:
+            raise
+        raise _wrap_broker_error("fetch account and positions for rebalance planning", e)
+
+    target_symbols = {symbol.upper() for symbol in request.target_weights}
+    missing_symbols = sorted(target_symbols - {position.symbol.upper() for position in positions})
+    reference_prices: dict[str, Decimal] = {}
+    try:
+        for symbol in missing_symbols:
+            reference_prices[symbol] = broker.get_quote(symbol).last
+    except Exception as e:
+        if "ConfigurationError" in type(e).__name__:
+            raise
+        raise _wrap_broker_error("fetch quotes for rebalance planning", e)
+
+    try:
+        plan = generate_rebalance_plan(
+            account=account,
+            current_positions=positions,
+            target_weights={symbol.upper(): weight for symbol, weight in request.target_weights.items()},
+            reference_prices=reference_prices,
+            drift_threshold_pct=request.drift_threshold_pct,
+            cash_buffer_pct=request.cash_buffer_pct,
+            liquidate_unmentioned=request.liquidate_unmentioned,
+            lot_size=request.lot_size,
+            max_position_weight_pct=request.max_position_weight_pct,
+        )
+    except ValueError as exc:
+        raise AppValidationError(
+            message=str(exc),
+            code="REBALANCE_PLAN_INVALID",
+        )
+
+    return RebalancePlanResponse.from_domain(plan)
 
 
 def scan_symbols(
@@ -230,4 +438,9 @@ def get_top_movers(config: Config, market_type: str = "stocks", limit: int = 10)
             message="Top movers not supported by this broker",
             code="FEATURE_NOT_SUPPORTED",
         )
-    return broker.get_top_movers(market_type=market_type, limit=limit)
+    try:
+        return cast(dict[str, Any], broker.get_top_movers(market_type=market_type, limit=limit))
+    except Exception as e:
+        if "ConfigurationError" in type(e).__name__:
+            raise
+        raise _wrap_broker_error("fetch top movers", e)

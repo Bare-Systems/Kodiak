@@ -8,12 +8,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
-- **Versioned REST API (K1-A)** — All REST routes are now under `/api/v1/` (e.g. `/api/v1/engine/status`, `/api/v1/portfolio/summary`). The previous unversioned paths no longer exist. Bear-Claw-Web's `KodiakClient` has been updated to use `/api/v1/` prefixes, unwrap response envelopes, propagate actor/role headers, and return the inner strategies array.
+- **Versioned REST API (K1-A)** — All REST routes are now under `/api/v1/` (e.g. `/api/v1/engine/status`, `/api/v1/portfolio/summary`). The previous unversioned paths no longer exist.
 - **Standard response envelopes (K1-B)** — Every REST response now uses a consistent JSON envelope: `{"data": ..., "error": null, "meta": {"request_id": "...", "version": "v1"}}` for success and `{"data": null, "error": {"code": ..., "message": ...}, "meta": {...}}` for errors. `AppError` subclasses map to correct HTTP status codes (404 for `NotFoundError`, 422 for `ValidationError`, 400 for others).
-- **Actor propagation (K1-C)** — REST middleware accepts `X-BearClaw-Actor` and `X-BearClaw-Role` headers and threads them into the audit log. Every audit entry now includes `actor`, `role`, and `request_id` fields when a request originates from the REST API. New `set_audit_context()` function in `audit.py` for setting these context vars.
+- **Actor propagation (K1-C)** — REST middleware accepts `X-Kodiak-Actor` and `X-Kodiak-Role` headers and threads them into the audit log. Every audit entry now includes `actor`, `role`, and `request_id` fields when a request originates from the REST API. New `set_audit_context()` function in `audit.py` for setting these context vars.
 - **Request ID tracing** — Every API response carries an `X-Request-ID` response header and a matching `meta.request_id` in the body. Both are the same UUID generated per request.
-- **OpenAPI schema export (K1-D)** — `GET /api/v1/schema.json` returns the full OpenAPI spec for the REST API. Useful for generating typed clients (e.g. the Bear-Claw-Web Ruby `KodiakClient`). Interactive docs remain at `/api/docs`.
+- **OpenAPI schema export (K1-D)** — `GET /api/v1/schema.json` returns the full OpenAPI spec for the REST API. Useful for generating typed clients and contract validators. Interactive docs remain at `/api/docs`.
 - **REST API contract tests** — New `tests/server/test_rest_api.py` covering: auth enforcement, versioned routes, envelope shape, request ID consistency, actor header acceptance, and schema export.
+- **Portfolio analytics (K3-A)** — Added snapshot-based portfolio analytics with Sharpe ratio, max drawdown, rolling returns, benchmark comparison (`SPY` by default), exposure summaries, a new REST endpoint at `GET /api/v1/portfolio/analytics`, and a new MCP tool `get_portfolio_analytics`. This pass intentionally replays current holdings over historical closes rather than reconstructing transaction-level portfolio history.
+- **Portfolio construction primitives (K3-B)** — Added planning-only position sizing and rebalance planning via new MCP tools `calculate_position_size` and `get_rebalance_plan`, plus REST endpoints at `POST /api/v1/portfolio/position-size` and `POST /api/v1/portfolio/rebalance-plan`. Supports target-value, target-weight, and risk-budget sizing, along with drift thresholds, cash buffers, and optional liquidation of omitted symbols for rebalance plans.
+- **CI pipeline (K4-A)** — Added a GitHub Actions workflow that runs `ruff check`, scoped `mypy`, `pytest`, and coverage generation on pull requests and pushes to `main`, with `coverage.xml` uploaded as a workflow artifact.
+- **Structured logging and tracing (K4-B)** — Added JSON-capable structured logging, REST request timing with `X-Request-ID` and `X-Process-Time-Ms`, and engine-cycle metric events for observability across server and automation flows.
+- **Research data expansion (K5-A)** — Added file-backed fundamentals and normalized benchmark history through new MCP tools `get_fundamentals` and `get_benchmark_history`, plus REST endpoints at `GET /api/v1/research/fundamentals/{symbol}` and `GET /api/v1/research/benchmark/{symbol}`.
 
 ### Added (K2 — State Management)
 
@@ -25,6 +30,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **Historical data quality guardrails** — CSV, Alpaca, and cached historical data now reject non-finite OHLCV values (`NaN`, `inf`, `-inf`). Invalid cached bars are discarded and refetched from the wrapped provider instead of poisoning benchmark, backtest, or portfolio analytics workflows.
 - **Container port mapping** — Start command was mapping `6702:6702` (host:container) but the container listens on `8000`. Corrected to `6702:8000`. Updated `port-published` verify regex from `6702->6702` to `6702->8000` to match. This was the root cause of health check timeouts on deploy.
 
 ### Changed
@@ -48,7 +54,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Monorepo Architecture** — Kodiak is now a Python monorepo with three packages:
   - `kodiak-core` (packages/core/) — Shared library with app services, schemas, MCP tools, broker integrations, backtesting, strategies, indicators, and domain modules.
   - `kodiak-cli` (packages/cli/) — Click CLI tool for humans. Exposes MCP tools via stdio transport (`kodiak mcp` command).
-  - `kodiak-server` (packages/server/) — FastAPI-based persistent server with REST API at `/api/`, streamable-HTTP MCP at `/mcp/`, web UI, and async scheduler. Integrates with Panda (iOS) and Bear Claw (AI agent).
+  - `kodiak-server` (packages/server/) — FastAPI-based persistent server with REST API at `/api/`, streamable-HTTP MCP at `/mcp/`, web UI, and async scheduler. Supports direct usage plus optional external integrations.
 - **Three Entry Points**:
   - `kodiak` — CLI tool (installed globally via `pipx install -e packages/cli/`)
   - `kodiak-server` — Persistent server (started via `poetry run kodiak-server` or `kodiak-server`)

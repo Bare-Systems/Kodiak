@@ -21,11 +21,11 @@ logger = logging.getLogger("kodiak.scheduler")
 class Scheduler:
     """Simple asyncio-based scheduler for periodic strategy evaluation."""
 
-    def __init__(self, interval_seconds: int = 60, dry_run: bool = False):
+    def __init__(self, interval_seconds: int = 60, dry_run: bool = False) -> None:
         self.interval = interval_seconds
         self.dry_run = dry_run
         self._running = False
-        self._task: asyncio.Task | None = None
+        self._task: asyncio.Task[None] | None = None
 
     async def start(self) -> None:
         """Start the scheduler loop."""

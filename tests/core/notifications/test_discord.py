@@ -5,7 +5,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
-
 from kodiak.notifications.channels.discord import DiscordChannel
 from kodiak.notifications.formatters import TradeNotification
 

@@ -52,11 +52,11 @@ Then you can run `kodiak status` (or `poetry run kodiak status`) and use the sam
 Use the same Claude config as in the README: set `command` to the **full path** to `kodiak` (run `which kodiak` and use that path), and `args`: `["mcp"]`, plus `env` for your Alpaca keys. Claude Desktop often uses a limited PATH and won’t find `kodiak` if you only use `"command": "kodiak"`. Install with `pipx install -e packages/cli/` so that path runs your local code. Each new Claude conversation spawns a new MCP process, so code changes are picked up without restarting Claude.
 
 **Server MCP (streamable-http)**:
-For remote agents or Panda integration, start the server: `poetry run kodiak-server` (or `kodiak-server` if installed globally). The MCP endpoint is at `http://localhost:8000/mcp/`. MCP rate limits and timeouts for long-running tools are configured via env (see README Configuration).
+For remote agents or external integrations, start the server: `poetry run kodiak-server` (or `kodiak-server` if installed globally). The MCP endpoint is at `http://localhost:8000/mcp/`. MCP rate limits and timeouts for long-running tools are configured via env (see README Configuration).
 
 **Agent Development**: Use MCP tools as the primary interface for all operations. Run CLI commands only when testing or verifying human-facing output (e.g. `kodiak status` or `kodiak strategy list --json`).
 
-**Note on tool visibility**: All 32 MCP tools are registered in `kodiak/mcp/tools.py`. Some MCP clients may filter or not display all tools. For testing, if a tool isn’t visible in your client, you can list all tools: `python3 -c "from kodiak.mcp.tools import build_server; server = build_server(); [print(f’{t.name}’) for t in server.list_tools()]"`.
+**Note on tool visibility**: All 38 MCP tools are registered in `kodiak/mcp/tools.py`. Some MCP clients may filter or not display all tools. For testing, if a tool isn’t visible in your client, you can list all tools: `python3 -c "from kodiak.mcp.tools import build_server; server = build_server(); [print(f’{t.name}’) for t in server.list_tools()]"`.
 
 ---
 
@@ -67,7 +67,7 @@ Kodiak is organized as a **monorepo with 3 packages**:
 ### packages/core/ — kodiak-core (shared library)
 
 - **kodiak/app/** — Shared application services (single source of truth for business logic)
-- **kodiak/mcp/tools.py** — Transport-agnostic MCP tool definitions (32 tools, `build_server()` factory, `register_tools()`)
+- **kodiak/mcp/tools.py** — Transport-agnostic MCP tool definitions (38 tools, `build_server()` factory, `register_tools()`)
 - **kodiak/schemas/** — Pydantic v2 models (contracts)
 - **kodiak/errors.py** — Shared error hierarchy
 - **kodiak/core/**, **kodiak/backtest/**, **kodiak/strategies/**, **kodiak/api/**, **kodiak/data/**, **kodiak/indicators/**, **kodiak/notifications/**, **kodiak/oms/**, **kodiak/utils/** — Domain and infra

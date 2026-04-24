@@ -140,6 +140,43 @@ class TestContractPortfolioTools:
         else:
             assert "total_equity" in data or "positions" in data
 
+    def test_get_portfolio_analytics_contract(self) -> None:
+        from kodiak.mcp.tools import get_portfolio_analytics
+
+        result = get_portfolio_analytics(lookback_days=30, benchmark_symbol="SPY", end_date="2024-12-31")
+        data = _parse(result)
+        assert isinstance(data, dict)
+        if _is_error(data):
+            _assert_error_contract(data)
+        else:
+            assert "benchmark_symbol" in data
+            assert "exposure" in data
+            assert "rolling_returns" in data
+
+    def test_calculate_position_size_contract(self) -> None:
+        from kodiak.mcp.tools import calculate_position_size
+
+        result = calculate_position_size(symbol="AAPL", method="target_weight", target_weight_pct=10)
+        data = _parse(result)
+        assert isinstance(data, dict)
+        if _is_error(data):
+            _assert_error_contract(data)
+        else:
+            assert "target_qty" in data
+            assert "estimated_weight_pct" in data
+
+    def test_get_rebalance_plan_contract(self) -> None:
+        from kodiak.mcp.tools import get_rebalance_plan
+
+        result = get_rebalance_plan(target_weights={"AAPL": 10, "MSFT": 10})
+        data = _parse(result)
+        assert isinstance(data, dict)
+        if _is_error(data):
+            _assert_error_contract(data)
+        else:
+            assert "trade_count" in data
+            assert "target_weights" in data
+
     def test_get_quote_contract(self) -> None:
         from kodiak.mcp.tools import get_quote
 
@@ -151,6 +188,31 @@ class TestContractPortfolioTools:
         else:
             for key in ("symbol", "bid", "ask", "last"):
                 assert key in data, f"get_quote success must include '{key}'"
+
+    def test_get_fundamentals_contract(self) -> None:
+        from kodiak.mcp.tools import get_fundamentals
+
+        result = get_fundamentals("AAPL")
+        data = _parse(result)
+        assert isinstance(data, dict)
+        if _is_error(data):
+            _assert_error_contract(data)
+        else:
+            assert "symbol" in data
+            assert "source" in data
+
+    def test_get_benchmark_history_contract(self) -> None:
+        from kodiak.mcp.tools import get_benchmark_history
+
+        result = get_benchmark_history("SPY", start="2024-01-01", end="2024-01-31")
+        data = _parse(result)
+        assert isinstance(data, dict)
+        if _is_error(data):
+            _assert_error_contract(data)
+        else:
+            assert "symbol" in data
+            assert "bars" in data
+            assert "return_pct" in data
 
 
 # =============================================================================

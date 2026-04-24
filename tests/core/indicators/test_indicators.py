@@ -3,7 +3,6 @@
 from datetime import datetime
 
 import pandas as pd
-
 from kodiak.indicators import get_indicator, list_indicators
 
 

@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Run Ruff
+        run: poetry run ruff check .
+
+      - name: Run scoped mypy
+        run: >
+          poetry run mypy --config-file mypy-ci.ini
+          packages/core/kodiak/app/orders.py
+          packages/core/kodiak/app/portfolio.py
+          packages/core/kodiak/app/research.py
+          packages/core/kodiak/core/engine.py
+          packages/core/kodiak/data/research.py
+          packages/core/kodiak/mcp/tools.py
+          packages/core/kodiak/schemas/research.py
+          packages/core/kodiak/utils/logging.py
+          packages/server/kodiak_server
+
+      - name: Run tests with coverage
+        run: >
+          poetry run pytest
+          --cov=packages/core/kodiak
+          --cov=packages/server/kodiak_server
+          --cov=packages/cli/kodiak_cli
+          --cov-report=term-missing
+          --cov-report=xml
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml

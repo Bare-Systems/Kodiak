@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 
 import pandas as pd
-
 from kodiak.backtest.results import BacktestResult
 from kodiak.visualization.chart import ChartBuilder
 

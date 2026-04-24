@@ -13,8 +13,8 @@ The connection is auto-committed on clean exit and rolled back on exception.
 from __future__ import annotations
 
 import os
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Generator
 
 import psycopg2
 import psycopg2.extras

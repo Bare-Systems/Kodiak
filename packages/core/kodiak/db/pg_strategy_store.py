@@ -12,13 +12,12 @@ passed as Python dicts/lists; psycopg2 handles JSON serialisation.
 
 from __future__ import annotations
 
-import json
 from datetime import datetime
 from typing import Any
 
 import psycopg2.extras
 
-from kodiak.strategies.models import Strategy, StrategyPhase
+from kodiak.strategies.models import Strategy
 
 
 def _dict_to_row(d: dict[str, Any]) -> dict[str, Any]:

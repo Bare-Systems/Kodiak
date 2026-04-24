@@ -5,7 +5,6 @@ This script helps verify that all tools are properly registered and can be
 used for debugging tool visibility issues in MCP clients.
 """
 
-import asyncio
 
 from kodiak.mcp.tools import _ALL_TOOLS
 

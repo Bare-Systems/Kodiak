@@ -56,7 +56,7 @@ Kodiak is built around a simple promise: **one trading core, two great interface
 * ✅ **Operational safety by default**: paper mode default, production confirmation, limits, kill switch, and audit logging.
 * ✅ **Production-ready integration surface**: REST API + streamable HTTP MCP + stdio MCP for local and remote agents.
 
-**MCP coverage:** 32 tools across engine, portfolio, orders, strategies, backtests, analysis, indicators, optimization, safety, and scheduling.
+**MCP coverage:** 38 tools across engine, portfolio, research data, orders, strategies, backtests, analysis, indicators, optimization, safety, and scheduling.
 
 ### Feature Deep Dive
 
@@ -84,9 +84,30 @@ Kodiak is built around a simple promise: **one trading core, two great interface
 
 **For AI agents**: Use the MCP tools (preferred). Connect via:
 - CLI stdio MCP: `kodiak mcp` (for Claude Desktop, Cursor, local agents)
-- Server HTTP MCP: `kodiak-server` then connect to `http://localhost:8000/mcp/` (for remote agents, Panda, Bear Claw)
+- Server HTTP MCP: `kodiak-server` then connect to `http://localhost:8000/mcp/` (for remote agents and optional external integrations)
 
 CLI is for humans and testing; agents should use MCP tools for all operations.
+
+Common MCP workflows:
+- `get_status` — confirm broker config, environment, engine state, and active strategy count
+- `list_strategies` / `resume_strategy` — inspect and manage strategy lifecycle
+- `run_backtest` / `run_optimization` — research and tune strategies on historical data
+- `get_portfolio`, `get_positions`, `get_portfolio_analytics` — inspect the live portfolio plus snapshot-based analytics versus a benchmark such as `SPY`
+- `calculate_position_size` / `get_rebalance_plan` — turn target weights, dollar caps, and risk budgets into planning outputs before placing trades
+- `get_fundamentals` / `get_benchmark_history` — pull file-backed company fundamentals and normalized benchmark price history for research workflows
+
+`get_portfolio_analytics` accepts `lookback_days`, `benchmark_symbol`, and optional `end_date` (`YYYY-MM-DD`). The current implementation replays the **current holdings snapshot** against historical closes, so it is reproducible and useful for benchmarking, but it is not a full transaction-level performance reconstruction.
+
+If an agent will run CSV-backed MCP tools such as `run_backtest`, `run_optimization`, or `get_portfolio_analytics`, include `HISTORICAL_DATA_DIR` in the MCP process `env` block so the subprocess can see your dataset.
+
+`get_benchmark_history` also uses the configured historical data provider and returns normalized bars plus first close, latest close, and period return. `get_fundamentals` reads file-backed data from `FUNDAMENTALS_DATA_DIR` when set, otherwise from `data/fundamentals`. Supported layouts are `{SYMBOL}.json`, `fundamentals.json`, or `fundamentals.csv` with a `symbol` column.
+
+`calculate_position_size` supports three methods:
+- `target_value` — size to a desired dollar exposure
+- `target_weight` — size to a desired portfolio weight percentage
+- `risk_budget` — size from a dollar risk budget plus `stop_loss_pct`
+
+`get_rebalance_plan` is planning-only. It returns proposed buy/sell quantities from a target weight map, optional drift threshold, optional cash buffer, and an option to liquidate symbols omitted from the target set.
 
 **Quick Start**: See Installation and Configuration sections below.
 
@@ -121,14 +142,15 @@ Config, data, and logs go to `~/.kodiak/` (macOS/Linux) or `%APPDATA%/kodiak/` (
       "args": ["mcp"],
       "env": {
         "ALPACA_API_KEY": "your_paper_key",
-        "ALPACA_SECRET_KEY": "your_paper_secret"
+        "ALPACA_SECRET_KEY": "your_paper_secret",
+        "HISTORICAL_DATA_DIR": "/absolute/path/to/historical-csvs"
       }
     }
   }
 }
 ```
 
-Or use the full path (run `which kodiak`):
+Claude Desktop often runs with a limited `PATH`, so the most reliable setup is to use the full binary path from `which kodiak`:
 ```json
 {
   "mcpServers": {
@@ -143,9 +165,11 @@ Or use the full path (run `which kodiak`):
 
 Restart Claude Desktop after saving. Done!
 
+If you are developing Kodiak locally, each new stdio MCP session starts a fresh `kodiak mcp` subprocess, so restarting the agent client is enough to pick up code changes.
+
 ### Option 2: Server + CLI (For Integration)
 
-For Panda, Bear Claw, or remote agent integration:
+For standalone server usage, remote agents, or optional external integrations:
 
 ```bash
 git clone <repo-url>
@@ -188,9 +212,9 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup.
 
 - **"kodiak" not found**: Ensure pipx bin is on PATH. Run `pipx ensurepath`.
 - **"command not found" in Claude Desktop**: Use the full path. Run `which kodiak` and use that path in the config.
-- **MCP server error**: Check Alpaca API keys and JSON syntax (no trailing commas).
+- **MCP server error**: Check Alpaca API keys and JSON syntax (no trailing commas). For CSV-backed MCP workflows, also set `HISTORICAL_DATA_DIR` in the MCP process environment.
 - **Homelab Blink deploy fails with "port is already allocated"**: The included Blink manifest publishes Kodiak on `192.168.86.53:18000`. If you still see a bind error, check for another service already using that host port.
-- **Tool not visible**: All 32 tools are registered. If a tool doesn’t appear in your client, it may be filtered. List all tools: `python3 -c "from kodiak.mcp.tools import build_server; [print(t.name) for t in build_server().list_tools()]"`
+- **Tool not visible**: All 38 tools are registered. If a tool doesn’t appear in your client, it may be filtered. List all tools: `python3 -c "from kodiak.mcp.tools import build_server; [print(t.name) for t in build_server().list_tools()]"`
 
 ## ⚙️ Configuration
 
@@ -229,6 +253,23 @@ When using the MCP server, you can tune rate limits and timeouts for long-runnin
 | `MCP_BACKTEST_TIMEOUT_SECONDS` | 300 | Max wall-clock time (seconds) for a single backtest; 0 = no limit. |
 | `MCP_OPTIMIZATION_TIMEOUT_SECONDS` | 600 | Max wall-clock time (seconds) for a single optimization run; 0 = no limit. |
 | `MCP_RATE_LIMIT_LONG_RUNNING_PER_MINUTE` | 10 | Max number of long-running tool calls (backtest + optimization combined) per 60-second window; 0 = no limit. |
+
+### Logging and tracing
+
+Kodiak Server now emits request-scoped logs and timing metadata by default:
+
+- Every REST response includes `X-Request-ID` and `X-Process-Time-Ms`
+- REST request logs include actor, role, method, path, status code, and duration
+- Engine runs emit `engine_cycle_complete` metrics with cycle duration, action count, market-open state, and scheduled strategy activations
+
+Server logging can be tuned with:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `KODIAK_LOG_FORMAT` | `json` (server) | Log format for server processes. Use `json` for structured ingestion or `text` for local readability. |
+| `KODIAK_LOG_TO_FILE` | `true` | When enabled, write `kodiak.log` and `trades.log` under the configured log directory in addition to stderr/stdout. |
+
+For stdio MCP sessions, prefer stderr logging so the JSON-RPC/MCP transport stream stays clean. The CLI already does this for `kodiak mcp`.
 
 ### Notifications (optional)
 
@@ -407,6 +448,7 @@ For CSV-based backtesting, create CSV files with OHLCV data. The default directo
 - File naming: `{SYMBOL}.csv` (e.g., `AAPL.csv`, `MSFT.csv`)
 - Required columns: `timestamp`, `open`, `high`, `low`, `close`, `volume`
 - Timestamp format: ISO format or `YYYY-MM-DD HH:MM:SS`
+- OHLCV values must be finite numbers. Files with `NaN`, `inf`, or `-inf` values are rejected before research, backtest, or analytics calculations run.
 
 Example CSV file (`AAPL.csv`):
 ```csv

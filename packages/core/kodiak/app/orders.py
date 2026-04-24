@@ -107,7 +107,15 @@ def list_orders(config: Config, show_all: bool = False) -> list[OrderResponse]:
         List of order response schemas.
     """
     broker = get_broker(config)
-    orders_list = broker.get_orders()
+    try:
+        orders_list = broker.get_orders()
+    except Exception as e:
+        if "ConfigurationError" in type(e).__name__:
+            raise
+        raise BrokerError(
+            message=f"Failed to list orders: {e}",
+            code="BROKER_FETCH_FAILED",
+        )
 
     if not show_all:
         open_statuses = {

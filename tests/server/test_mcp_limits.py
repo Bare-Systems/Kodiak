@@ -6,7 +6,6 @@ import time
 from unittest.mock import patch
 
 import pytest
-
 from kodiak.errors import RateLimitError, TaskTimeoutError
 from kodiak.mcp import limits as limits_mod
 

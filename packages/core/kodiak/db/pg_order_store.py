@@ -11,17 +11,15 @@ so Kodiak can do local lookups without hitting the broker API on every cycle.
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Any
 
 import psycopg2.extras
 
-from kodiak.models.order import Order, OrderSide, OrderStatus, OrderType
+from kodiak.models.order import Order
 
 
 def _order_to_row(order: Order) -> dict[str, Any]:
     """Serialise an Order to a dict for INSERT/UPDATE."""
-    from decimal import Decimal
 
     return {
         "id": order.id,

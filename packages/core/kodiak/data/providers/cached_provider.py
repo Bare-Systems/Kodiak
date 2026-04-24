@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from kodiak.data.providers.base import DataProvider, TimeFrame
+from kodiak.data.providers.base import DataProvider, TimeFrame, validate_ohlcv_frame
 from kodiak.utils.logging import get_logger
 
 
@@ -55,16 +55,27 @@ class CachedDataProvider(DataProvider):
         for symbol in symbols:
             cache_path = self._cache_path(CacheKey(symbol, start, end, timeframe))
             if self._is_cache_valid(cache_path):
-                cached[symbol] = _read_parquet(cache_path)
+                try:
+                    cached[symbol] = validate_ohlcv_frame(
+                        _read_parquet(cache_path),
+                        symbol,
+                        "Cached",
+                    )
+                except ValueError:
+                    self.logger.warning("Discarding invalid cached data: %s", cache_path)
+                    cache_path.unlink(missing_ok=True)
+                    missing.append(symbol)
             else:
                 missing.append(symbol)
 
         if missing:
             fetched = self.provider.get_bars(missing, start, end, timeframe)
             for symbol, df in fetched.items():
+                df = validate_ohlcv_frame(df, symbol, "Fetched")
                 cache_path = self._cache_path(CacheKey(symbol, start, end, timeframe))
                 cache_path.parent.mkdir(parents=True, exist_ok=True)
                 _write_parquet(cache_path, df)
+                fetched[symbol] = df
             cached.update(fetched)
 
         return cached

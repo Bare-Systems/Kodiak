@@ -11,7 +11,9 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
+from typing import Any
 
 
 def _run_migrations() -> None:
@@ -34,21 +36,34 @@ def _run_migrations() -> None:
         print(f"  DB:        migration warning: {e}", file=sys.stderr)
 
 
-def create_app():
+def create_app() -> Any:
     """Create the combined FastAPI + MCP application."""
     from fastapi import FastAPI, Request
     from fastapi.responses import JSONResponse
+    from kodiak.utils.config import load_config
+    from kodiak.utils.logging import get_logger, setup_logging
 
     from kodiak_server.mcp.server import create_mcp_app
     from kodiak_server.rest.app import create_rest_app
     from kodiak_server.web import create_web_app
 
+    config = load_config()
+    setup_logging(
+        log_dir=config.log_dir,
+        log_to_file=os.getenv("KODIAK_LOG_TO_FILE", "true").lower() in {"1", "true", "yes"},
+        console_stream=sys.stderr,
+        log_format=os.getenv("KODIAK_LOG_FORMAT", "json"),
+    )
+    logger = get_logger("kodiak_server.main")
+
     @asynccontextmanager
-    async def lifespan(app: FastAPI):  # noqa: ARG001
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:  # noqa: ARG001
         # Startup: apply any pending DB schema migrations.
         _run_migrations()
+        logger.info("Kodiak server startup complete")
         yield
         # Shutdown: nothing to clean up yet.
+        logger.info("Kodiak server shutdown complete")
 
     app = FastAPI(
         title="Kodiak Server",
@@ -60,7 +75,10 @@ def create_app():
     # API key auth — protects /api/* and /mcp/* routes.
     # Set KODIAK_API_TOKEN in the environment; /health is always exempt.
     @app.middleware("http")
-    async def api_key_auth(request: Request, call_next):
+    async def api_key_auth(
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Any]],
+    ) -> Any:
         protected = request.url.path.startswith("/api") or request.url.path.startswith("/mcp")
         if protected:
             token = os.environ.get("KODIAK_API_TOKEN", "")
@@ -69,9 +87,9 @@ def create_app():
                 return JSONResponse({"error": "unauthorized"}, status_code=401)
         return await call_next(request)
 
-    # Health endpoint — no auth required, checked by blink and BearClawWeb.
+    # Health endpoint — no auth required, checked by blink and monitoring.
     @app.get("/health")
-    async def health():
+    async def health() -> dict[str, str]:
         return {"status": "ok", "service": "kodiak"}
 
     # Mount REST API
@@ -106,12 +124,23 @@ def main() -> None:
         ssl_kwargs["ssl_certfile"] = args.ssl_certfile
         ssl_kwargs["ssl_keyfile"] = args.ssl_keyfile
 
-    print(f"Starting Kodiak Server on {args.host}:{args.port}", file=sys.stderr)
-    print(f"  REST API:  http://{args.host}:{args.port}/api/v1/", file=sys.stderr)
-    print(f"  API docs:  http://{args.host}:{args.port}/api/docs", file=sys.stderr)
-    print(f"  Schema:    http://{args.host}:{args.port}/api/v1/schema.json", file=sys.stderr)
-    print(f"  MCP:       http://{args.host}:{args.port}/mcp/", file=sys.stderr)
-    print(f"  Web UI:    http://{args.host}:{args.port}/", file=sys.stderr)
+    from kodiak.utils.config import load_config
+    from kodiak.utils.logging import get_logger, setup_logging
+
+    config = load_config()
+    setup_logging(
+        log_dir=config.log_dir,
+        log_to_file=os.getenv("KODIAK_LOG_TO_FILE", "true").lower() in {"1", "true", "yes"},
+        console_stream=sys.stderr,
+        log_format=os.getenv("KODIAK_LOG_FORMAT", "json"),
+    )
+    logger = get_logger("kodiak_server.main")
+    logger.info("Starting Kodiak Server on %s:%s", args.host, args.port)
+    logger.info("REST API: http://%s:%s/api/v1/", args.host, args.port)
+    logger.info("API docs: http://%s:%s/api/docs", args.host, args.port)
+    logger.info("Schema: http://%s:%s/api/v1/schema.json", args.host, args.port)
+    logger.info("MCP: http://%s:%s/mcp/", args.host, args.port)
+    logger.info("Web UI: http://%s:%s/", args.host, args.port)
 
     uvicorn.run(
         "kodiak_server.main:create_app",

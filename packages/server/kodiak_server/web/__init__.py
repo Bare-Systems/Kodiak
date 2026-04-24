@@ -21,7 +21,7 @@ def create_web_app() -> FastAPI:
     templates = Jinja2Templates(directory=str(TEMPLATE_DIR))
 
     @app.get("/", response_class=HTMLResponse)
-    async def index(request: Request):
+    async def index(request: Request) -> HTMLResponse:
         return templates.TemplateResponse("index.html", {"request": request})
 
     return app

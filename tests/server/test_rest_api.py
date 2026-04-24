@@ -4,20 +4,17 @@ Validates:
 - Route versioning: all business endpoints live under /api/v1/
 - Response envelope: every response has data/error/meta with request_id
 - Auth enforcement: /api/v1/* requires Bearer token, /health does not
-- Actor propagation: X-BearClaw-Actor header is accepted without error
+- Actor propagation: X-Kodiak-Actor header is accepted without error
 - Schema export: GET /api/v1/schema.json returns valid OpenAPI JSON
 - X-Request-ID header is returned on every response
 """
 
 from __future__ import annotations
 
-import json
-import os
 from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
-
 
 TEST_TOKEN = "test-token-k1"
 
@@ -79,6 +76,45 @@ def test_versioned_portfolio_route_exists(client: TestClient, authed: dict) -> N
     assert r.status_code in (200, 400)
 
 
+def test_versioned_portfolio_analytics_route_exists(client: TestClient, authed: dict) -> None:
+    r = client.get(
+        "/api/v1/portfolio/analytics?lookback_days=30&benchmark_symbol=SPY&end_date=2024-12-31",
+        headers=authed,
+    )
+    assert r.status_code in (200, 400, 422)
+
+
+def test_position_size_route_exists(client: TestClient, authed: dict) -> None:
+    r = client.post(
+        "/api/v1/portfolio/position-size",
+        headers=authed,
+        json={"symbol": "AAPL", "method": "target_weight", "target_weight_pct": 10},
+    )
+    assert r.status_code in (200, 400, 422)
+
+
+def test_rebalance_plan_route_exists(client: TestClient, authed: dict) -> None:
+    r = client.post(
+        "/api/v1/portfolio/rebalance-plan",
+        headers=authed,
+        json={"target_weights": {"AAPL": 10, "MSFT": 10}},
+    )
+    assert r.status_code in (200, 400, 422)
+
+
+def test_research_fundamentals_route_exists(client: TestClient, authed: dict) -> None:
+    r = client.get("/api/v1/research/fundamentals/AAPL", headers=authed)
+    assert r.status_code in (200, 400, 422)
+
+
+def test_research_benchmark_route_exists(client: TestClient, authed: dict) -> None:
+    r = client.get(
+        "/api/v1/research/benchmark/SPY?start=2024-01-01&end=2024-01-31",
+        headers=authed,
+    )
+    assert r.status_code in (200, 400, 422)
+
+
 def test_versioned_orders_route_exists(client: TestClient, authed: dict) -> None:
     r = client.get("/api/v1/orders/", headers=authed)
     assert r.status_code in (200, 400)
@@ -132,6 +168,12 @@ def test_x_request_id_header_on_response(client: TestClient, authed: dict) -> No
     assert "x-request-id" in r.headers, "X-Request-ID header missing from response"
 
 
+def test_x_process_time_header_on_response(client: TestClient, authed: dict) -> None:
+    r = client.get("/api/v1/strategies/", headers=authed)
+    assert "x-process-time-ms" in r.headers, "X-Process-Time-Ms header missing from response"
+    assert float(r.headers["x-process-time-ms"]) >= 0
+
+
 def test_request_id_matches_meta(client: TestClient, authed: dict) -> None:
     r = client.get("/api/v1/strategies/", headers=authed)
     header_id = r.headers.get("x-request-id")
@@ -145,7 +187,7 @@ def test_request_id_matches_meta(client: TestClient, authed: dict) -> None:
 
 
 def test_actor_header_accepted(client: TestClient, authed: dict) -> None:
-    headers = {**authed, "X-BearClaw-Actor": "joe@example.com", "X-BearClaw-Role": "operator"}
+    headers = {**authed, "X-Kodiak-Actor": "joe@example.com", "X-Kodiak-Role": "operator"}
     r = client.get("/api/v1/strategies/", headers=headers)
     # Just verify the headers don't cause a 4xx/5xx
     assert r.status_code in (200, 400)

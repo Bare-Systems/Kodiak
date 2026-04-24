@@ -1,7 +1,6 @@
 """Tests for CLI module."""
 
 from click.testing import CliRunner
-
 from kodiak_cli.main import cli
 
 

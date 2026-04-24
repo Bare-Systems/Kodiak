@@ -1,6 +1,6 @@
 """Kodiak MCP tool definitions (transport-agnostic).
 
-All 32 MCP tools are defined here as plain functions. The register_tools()
+All MCP tools are defined here as plain functions. The register_tools()
 function wires them onto any FastMCP server instance. Transport selection
 (stdio vs streamable-http) is handled by the CLI and server packages.
 """
@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 from decimal import Decimal
-from typing import Any
+from typing import Any, Literal, cast
 
 from mcp.server.fastmcp import FastMCP
 
@@ -131,6 +131,156 @@ def get_portfolio() -> str:
         return _err(e)
 
 
+def get_portfolio_analytics(
+    lookback_days: int = 252,
+    benchmark_symbol: str = "SPY",
+    end_date: str | None = None,
+) -> str:
+    """Get snapshot-based portfolio analytics versus a benchmark.
+
+    Args:
+        lookback_days: Target trailing window in trading days (default: 252).
+        benchmark_symbol: Benchmark ticker for comparison (default: SPY).
+        end_date: Optional YYYY-MM-DD history end date, useful for CSV datasets.
+    """
+    from datetime import date
+
+    from kodiak.app.portfolio import get_portfolio_analytics as _get_portfolio_analytics
+
+    parsed_end_date: date | None = None
+    if end_date:
+        parsed_end_date = date.fromisoformat(end_date)
+
+    try:
+        return _ok(
+            _get_portfolio_analytics(
+                _config(),
+                lookback_days=lookback_days,
+                benchmark_symbol=benchmark_symbol,
+                end_date=parsed_end_date,
+            )
+        )
+    except ValueError:
+        return _err(
+            ValidationError(
+                message="end_date must be in YYYY-MM-DD format",
+                details={"end_date": end_date},
+            )
+        )
+    except AppError as e:
+        return _err(e)
+
+
+def calculate_position_size(
+    symbol: str,
+    method: str,
+    price: float | None = None,
+    target_value: float | None = None,
+    target_weight_pct: float | None = None,
+    risk_budget: float | None = None,
+    stop_loss_pct: float | None = None,
+    available_capital: float | None = None,
+    max_position_value: float | None = None,
+    max_position_weight_pct: float | None = None,
+    lot_size: int = 1,
+) -> str:
+    """Calculate a recommended target position size.
+
+    Args:
+        symbol: Stock ticker (e.g. "AAPL").
+        method: One of target_value, target_weight, or risk_budget.
+        price: Optional explicit price override.
+        target_value: Desired total dollar exposure for target_value sizing.
+        target_weight_pct: Desired portfolio weight (%) for target_weight sizing.
+        risk_budget: Dollar risk budget for risk_budget sizing.
+        stop_loss_pct: Stop-loss percentage used with risk_budget sizing.
+        available_capital: Optional override for capital available to deploy.
+        max_position_value: Optional hard cap for total position value.
+        max_position_weight_pct: Optional hard cap for total portfolio weight.
+        lot_size: Round target quantity down to this lot size.
+    """
+    from kodiak.app.portfolio import calculate_position_size_app
+    from kodiak.schemas.portfolio import PositionSizingRequest
+
+    try:
+        return _ok(
+            calculate_position_size_app(
+                _config(),
+                PositionSizingRequest(
+                    symbol=symbol.upper(),
+                    method=method,
+                    price=Decimal(str(price)) if price is not None else None,
+                    target_value=Decimal(str(target_value)) if target_value is not None else None,
+                    target_weight_pct=(
+                        Decimal(str(target_weight_pct)) if target_weight_pct is not None else None
+                    ),
+                    risk_budget=Decimal(str(risk_budget)) if risk_budget is not None else None,
+                    stop_loss_pct=Decimal(str(stop_loss_pct)) if stop_loss_pct is not None else None,
+                    available_capital=(
+                        Decimal(str(available_capital)) if available_capital is not None else None
+                    ),
+                    max_position_value=(
+                        Decimal(str(max_position_value)) if max_position_value is not None else None
+                    ),
+                    max_position_weight_pct=(
+                        Decimal(str(max_position_weight_pct))
+                        if max_position_weight_pct is not None
+                        else None
+                    ),
+                    lot_size=lot_size,
+                ),
+            )
+        )
+    except AppError as e:
+        return _err(e)
+
+
+def get_rebalance_plan(
+    target_weights: dict[str, float],
+    drift_threshold_pct: float = 1,
+    cash_buffer_pct: float = 0,
+    liquidate_unmentioned: bool = False,
+    lot_size: int = 1,
+    max_position_weight_pct: float | None = None,
+) -> str:
+    """Generate a dry-run rebalance plan from target portfolio weights.
+
+    Args:
+        target_weights: Mapping of symbol -> target portfolio weight percent.
+        drift_threshold_pct: Minimum drift (%) before proposing a rebalance trade.
+        cash_buffer_pct: Minimum cash to retain after rebalancing.
+        liquidate_unmentioned: If true, positions not in target_weights are targeted to 0%.
+        lot_size: Round target quantities down to this lot size.
+        max_position_weight_pct: Optional max allowed target weight per symbol.
+    """
+    from kodiak.app.portfolio import get_rebalance_plan_app
+    from kodiak.schemas.portfolio import RebalanceRequest
+
+    try:
+        return _ok(
+            get_rebalance_plan_app(
+                _config(),
+                RebalanceRequest(
+                    target_weights={
+                        symbol.upper(): Decimal(str(weight))
+                        for symbol, weight in target_weights.items()
+                    },
+                    drift_threshold_pct=Decimal(str(drift_threshold_pct)),
+                    cash_buffer_pct=Decimal(str(cash_buffer_pct)),
+                    liquidate_unmentioned=liquidate_unmentioned,
+                    lot_size=lot_size,
+                    max_position_weight_pct=(
+                        Decimal(str(max_position_weight_pct))
+                        if max_position_weight_pct is not None
+                        else None
+                    ),
+                ),
+            )
+        )
+    except AppError as e:
+        return _err(e)
+
+
 def get_quote(symbol: str) -> str:
     """Get current bid/ask/last quote for a symbol.
 
@@ -157,6 +307,73 @@ def get_top_movers(market_type: str = "stocks", limit: int = 10) -> str:
     try:
         result = _get_top_movers(_config(), market_type=market_type, limit=limit)
         return json.dumps(result, indent=2, default=str)
+    except AppError as e:
+        return _err(e)
+
+
+# =============================================================================
+# Research Data Tools
+# =============================================================================
+
+
+def get_fundamentals(symbol: str) -> str:
+    """Get file-backed company fundamentals for a symbol.
+
+    Args:
+        symbol: Stock ticker (e.g. "AAPL").
+    """
+    from kodiak.app.research import get_fundamentals as _get_fundamentals
+
+    try:
+        return _ok(_get_fundamentals(_config(), symbol.upper()))
+    except AppError as e:
+        return _err(e)
+
+
+def get_benchmark_history(
+    symbol: str,
+    start: str,
+    end: str,
+    data_source: str | None = None,
+    timeframe: str = "1Day",
+) -> str:
+    """Get historical bars and return stats for a benchmark symbol.
+
+    Args:
+        symbol: Benchmark ticker (e.g. "SPY").
+        start: Start date in YYYY-MM-DD format.
+        end: End date in YYYY-MM-DD format.
+        data_source: Optional data source override ("csv", "alpaca", or "cached").
+        timeframe: Bar timeframe (default: "1Day").
+    """
+    from datetime import date
+
+    from kodiak.app.research import get_benchmark_history as _get_benchmark_history
+    from kodiak.data.providers.base import TimeFrame
+
+    try:
+        return _ok(
+            _get_benchmark_history(
+                _config(),
+                symbol.upper(),
+                start=date.fromisoformat(start),
+                end=date.fromisoformat(end),
+                data_source=data_source,
+                timeframe=TimeFrame(timeframe),
+            )
+        )
+    except ValueError as e:
+        return _err(
+            ValidationError(
+                message="start/end must be YYYY-MM-DD and timeframe must be a supported value.",
+                details={
+                    "start": start,
+                    "end": end,
+                    "timeframe": timeframe,
+                    "reason": str(e),
+                },
+            )
+        )
     except AppError as e:
         return _err(e)
 
@@ -747,8 +964,14 @@ _ALL_TOOLS = [
     get_balance,
     get_positions,
     get_portfolio,
+    get_portfolio_analytics,
+    calculate_position_size,
+    get_rebalance_plan,
     get_quote,
     get_top_movers,
+    # Research Data
+    get_fundamentals,
+    get_benchmark_history,
     # Orders
     place_order,
     list_orders,
@@ -786,14 +1009,15 @@ _ALL_TOOLS = [
 
 def register_tools(server: FastMCP) -> None:
     """Register all MCP tools on the provided server."""
+    tool_decorator = cast(Any, server.tool())
     for tool_fn in _ALL_TOOLS:
-        server.tool()(_with_mcp_audit(tool_fn))  # type: ignore[arg-type]
+        tool_decorator(_with_mcp_audit(tool_fn))
 
 
 def build_server(
     host: str = "127.0.0.1",
     port: int = 8000,
-    log_level: str = "INFO",
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO",
 ) -> FastMCP:
     """Create a FastMCP server with all Kodiak tools registered.
 
