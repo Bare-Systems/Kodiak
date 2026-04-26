@@ -32,6 +32,7 @@ application TLS in the cloud.
 
 - [🚀 Features](#-features)
 - [🤖 Using Kodiak](#-using-kodiak)
+- [🧭 Operator Onboarding](#-operator-onboarding)
 - [📦 Installation](#-installation)
 - [⚙️ Configuration](#️-configuration)
 - [▶️ Usage (CLI)](#️-usage-cli)
@@ -87,6 +88,10 @@ Kodiak is built around a simple promise: **one trading core, two great interface
 - Server HTTP MCP: `kodiak-server` then connect to `http://localhost:8000/mcp/` (for remote agents and optional external integrations)
 
 CLI is for humans and testing; agents should use MCP tools for all operations.
+
+## 🧭 Operator Onboarding
+
+New operators should start with the [operator onboarding guide](docs/operator-onboarding.md). It covers the safe headless path from install to paper credentials, server startup, MCP connection, planning tools, explicit execution confirmation, smoke checks, and troubleshooting.
 
 Common MCP workflows:
 - `get_status` — confirm broker config, environment, engine state, and active strategy count
