@@ -23,6 +23,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Headless server landing page (K6-A)** — Kept Kodiak headless-first by replacing the browser dashboard shell with a minimal server landing page that links to health, REST docs, schema export, and MCP without rendering account or trading data.
 - **Headless execution policy (K6-B)** — Added a shared execution policy layer that classifies actions and blocks sensitive REST/MCP execution calls unless `confirm_execution=true`, while attaching policy decision metadata to audit logs.
 - **Policy contract coverage (K6-C)** — Added REST and MCP contract tests proving sensitive execution tools and endpoints block without confirmation, reach the underlying execution layer with confirmation, and emit audit records with policy metadata and request context.
+- **Contract snapshots (K7-A)** — Added checked-in REST OpenAPI and MCP tool schema snapshots plus a regeneration script and snapshot tests to catch accidental public interface changes.
 
 ### Added (K2 — State Management)
 

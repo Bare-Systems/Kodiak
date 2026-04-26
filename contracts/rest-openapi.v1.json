@@ -1,0 +1,1486 @@
+{
+  "components": {
+    "schemas": {
+      "CreateStrategyRequest": {
+        "properties": {
+          "qty": {
+            "title": "Qty",
+            "type": "integer"
+          },
+          "stop_loss_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop Loss Pct"
+          },
+          "strategy_type": {
+            "title": "Strategy Type",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "take_profit_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Take Profit Pct"
+          },
+          "trailing_stop_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trailing Stop Pct"
+          }
+        },
+        "required": [
+          "strategy_type",
+          "symbol",
+          "qty"
+        ],
+        "title": "CreateStrategyRequest",
+        "type": "object"
+      },
+      "EnableRequest": {
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "EnableRequest",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "PlaceOrderRequest": {
+        "properties": {
+          "confirm_execution": {
+            "default": false,
+            "title": "Confirm Execution",
+            "type": "boolean"
+          },
+          "price": {
+            "title": "Price",
+            "type": "number"
+          },
+          "qty": {
+            "title": "Qty",
+            "type": "integer"
+          },
+          "side": {
+            "default": "buy",
+            "title": "Side",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "qty",
+          "price"
+        ],
+        "title": "PlaceOrderRequest",
+        "type": "object"
+      },
+      "PositionSizingRequest": {
+        "description": "Request for sizing a position.",
+        "properties": {
+          "available_capital": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Available Capital"
+          },
+          "lot_size": {
+            "default": 1,
+            "title": "Lot Size",
+            "type": "integer"
+          },
+          "max_position_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Position Value"
+          },
+          "max_position_weight_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Position Weight Pct"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "risk_budget": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Budget"
+          },
+          "stop_loss_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop Loss Pct"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "target_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Value"
+          },
+          "target_weight_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Weight Pct"
+          }
+        },
+        "required": [
+          "symbol",
+          "method"
+        ],
+        "title": "PositionSizingRequest",
+        "type": "object"
+      },
+      "RebalanceRequest": {
+        "description": "Request for a dry-run rebalance plan.",
+        "properties": {
+          "cash_buffer_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "default": "0",
+            "title": "Cash Buffer Pct"
+          },
+          "drift_threshold_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "default": "1",
+            "title": "Drift Threshold Pct"
+          },
+          "liquidate_unmentioned": {
+            "default": false,
+            "title": "Liquidate Unmentioned",
+            "type": "boolean"
+          },
+          "lot_size": {
+            "default": 1,
+            "title": "Lot Size",
+            "type": "integer"
+          },
+          "max_position_weight_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Position Weight Pct"
+          },
+          "target_weights": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                  "type": "string"
+                }
+              ]
+            },
+            "title": "Target Weights",
+            "type": "object"
+          }
+        },
+        "required": [
+          "target_weights"
+        ],
+        "title": "RebalanceRequest",
+        "type": "object"
+      },
+      "StartRequest": {
+        "properties": {
+          "confirm_execution": {
+            "default": false,
+            "title": "Confirm Execution",
+            "type": "boolean"
+          },
+          "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "interval": {
+            "default": 60,
+            "title": "Interval",
+            "type": "integer"
+          }
+        },
+        "title": "StartRequest",
+        "type": "object"
+      },
+      "StopRequest": {
+        "properties": {
+          "confirm_execution": {
+            "default": false,
+            "title": "Confirm Execution",
+            "type": "boolean"
+          },
+          "force": {
+            "default": false,
+            "title": "Force",
+            "type": "boolean"
+          }
+        },
+        "title": "StopRequest",
+        "type": "object"
+      },
+      "TimeFrame": {
+        "description": "Supported timeframes for historical data.\n\nValues match Alpaca API naming convention for easy mapping.",
+        "enum": [
+          "1Day",
+          "1Hour",
+          "15Min",
+          "5Min",
+          "1Min"
+        ],
+        "title": "TimeFrame",
+        "type": "string"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Kodiak headless trading and research API. All endpoints live under /v1/. Authenticate with: Authorization: Bearer <KODIAK_API_TOKEN>.",
+    "title": "Kodiak REST API",
+    "version": "2.0.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/v1/engine/start": {
+      "post": {
+        "description": "Start the trading engine.",
+        "operationId": "start_v1_engine_start_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Start V1 Engine Start Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start",
+        "tags": [
+          "engine"
+        ]
+      }
+    },
+    "/v1/engine/status": {
+      "get": {
+        "description": "Get engine status.",
+        "operationId": "status_v1_engine_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Status V1 Engine Status Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Status",
+        "tags": [
+          "engine"
+        ]
+      }
+    },
+    "/v1/engine/stop": {
+      "post": {
+        "description": "Stop the trading engine.",
+        "operationId": "stop_v1_engine_stop_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StopRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Stop V1 Engine Stop Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stop",
+        "tags": [
+          "engine"
+        ]
+      }
+    },
+    "/v1/orders/": {
+      "get": {
+        "description": "List orders.",
+        "operationId": "get_orders_v1_orders__get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "show_all",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Show All",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Orders V1 Orders  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Orders",
+        "tags": [
+          "orders"
+        ]
+      },
+      "post": {
+        "description": "Place an order.",
+        "operationId": "create_order_v1_orders__post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlaceOrderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Create Order V1 Orders  Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Order",
+        "tags": [
+          "orders"
+        ]
+      }
+    },
+    "/v1/orders/{order_id}": {
+      "delete": {
+        "description": "Cancel an order.",
+        "operationId": "delete_order_v1_orders__order_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "title": "Order Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "confirm_execution",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Confirm Execution",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Delete Order V1 Orders  Order Id  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Order",
+        "tags": [
+          "orders"
+        ]
+      }
+    },
+    "/v1/portfolio/analytics": {
+      "get": {
+        "description": "Get snapshot-based portfolio analytics.",
+        "operationId": "analytics_v1_portfolio_analytics_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "lookback_days",
+            "required": false,
+            "schema": {
+              "default": 252,
+              "minimum": 1,
+              "title": "Lookback Days",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "benchmark_symbol",
+            "required": false,
+            "schema": {
+              "default": "SPY",
+              "title": "Benchmark Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End Date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Analytics V1 Portfolio Analytics Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Analytics",
+        "tags": [
+          "portfolio"
+        ]
+      }
+    },
+    "/v1/portfolio/balance": {
+      "get": {
+        "description": "Get account balance.",
+        "operationId": "balance_v1_portfolio_balance_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Balance V1 Portfolio Balance Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Balance",
+        "tags": [
+          "portfolio"
+        ]
+      }
+    },
+    "/v1/portfolio/movers": {
+      "get": {
+        "description": "Get top movers.",
+        "operationId": "movers_v1_portfolio_movers_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "market_type",
+            "required": false,
+            "schema": {
+              "default": "stocks",
+              "title": "Market Type",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Movers V1 Portfolio Movers Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Movers",
+        "tags": [
+          "portfolio"
+        ]
+      }
+    },
+    "/v1/portfolio/position-size": {
+      "post": {
+        "description": "Calculate a target size for a symbol.",
+        "operationId": "position_size_v1_portfolio_position_size_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PositionSizingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Position Size V1 Portfolio Position Size Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Position Size",
+        "tags": [
+          "portfolio"
+        ]
+      }
+    },
+    "/v1/portfolio/positions": {
+      "get": {
+        "description": "Get open positions.",
+        "operationId": "positions_v1_portfolio_positions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Positions V1 Portfolio Positions Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Positions",
+        "tags": [
+          "portfolio"
+        ]
+      }
+    },
+    "/v1/portfolio/quote/{symbol}": {
+      "get": {
+        "description": "Get a quote for a symbol.",
+        "operationId": "quote_v1_portfolio_quote__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Quote V1 Portfolio Quote  Symbol  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Quote",
+        "tags": [
+          "portfolio"
+        ]
+      }
+    },
+    "/v1/portfolio/rebalance-plan": {
+      "post": {
+        "description": "Generate a dry-run rebalance plan.",
+        "operationId": "rebalance_plan_v1_portfolio_rebalance_plan_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RebalanceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Rebalance Plan V1 Portfolio Rebalance Plan Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rebalance Plan",
+        "tags": [
+          "portfolio"
+        ]
+      }
+    },
+    "/v1/portfolio/summary": {
+      "get": {
+        "description": "Get full portfolio summary.",
+        "operationId": "summary_v1_portfolio_summary_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Summary V1 Portfolio Summary Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Summary",
+        "tags": [
+          "portfolio"
+        ]
+      }
+    },
+    "/v1/research/benchmark/{symbol}": {
+      "get": {
+        "description": "Get historical bars and return stats for a benchmark symbol.",
+        "operationId": "benchmark_history_v1_research_benchmark__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "start",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Start",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "End",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "data_source",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Data Source"
+            }
+          },
+          {
+            "in": "query",
+            "name": "timeframe",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/TimeFrame",
+              "default": "1Day"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Benchmark History V1 Research Benchmark  Symbol  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Benchmark History",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/v1/research/fundamentals/{symbol}": {
+      "get": {
+        "description": "Get company fundamentals for a symbol.",
+        "operationId": "fundamentals_v1_research_fundamentals__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Fundamentals V1 Research Fundamentals  Symbol  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Fundamentals",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/v1/safety/status": {
+      "get": {
+        "description": "Get safety controls status and configured limits.",
+        "operationId": "status_v1_safety_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Status V1 Safety Status Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Status",
+        "tags": [
+          "safety"
+        ]
+      }
+    },
+    "/v1/strategies/": {
+      "get": {
+        "description": "List all strategies.",
+        "operationId": "get_strategies_v1_strategies__get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Strategies V1 Strategies  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Strategies",
+        "tags": [
+          "strategies"
+        ]
+      },
+      "post": {
+        "description": "Create a new strategy.",
+        "operationId": "create_v1_strategies__post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStrategyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Create V1 Strategies  Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create",
+        "tags": [
+          "strategies"
+        ]
+      }
+    },
+    "/v1/strategies/{strategy_id}": {
+      "delete": {
+        "description": "Remove a strategy.",
+        "operationId": "delete_strategy_v1_strategies__strategy_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "strategy_id",
+            "required": true,
+            "schema": {
+              "title": "Strategy Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Delete Strategy V1 Strategies  Strategy Id  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Strategy",
+        "tags": [
+          "strategies"
+        ]
+      },
+      "get": {
+        "description": "Get strategy details.",
+        "operationId": "get_strategy_v1_strategies__strategy_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "strategy_id",
+            "required": true,
+            "schema": {
+              "title": "Strategy Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Strategy V1 Strategies  Strategy Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Strategy",
+        "tags": [
+          "strategies"
+        ]
+      }
+    },
+    "/v1/strategies/{strategy_id}/enabled": {
+      "post": {
+        "description": "Enable or disable a strategy.",
+        "operationId": "set_enabled_v1_strategies__strategy_id__enabled_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "strategy_id",
+            "required": true,
+            "schema": {
+              "title": "Strategy Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnableRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Set Enabled V1 Strategies  Strategy Id  Enabled Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Enabled",
+        "tags": [
+          "strategies"
+        ]
+      }
+    },
+    "/v1/strategies/{strategy_id}/pause": {
+      "post": {
+        "description": "Pause a strategy.",
+        "operationId": "pause_v1_strategies__strategy_id__pause_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "strategy_id",
+            "required": true,
+            "schema": {
+              "title": "Strategy Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Pause V1 Strategies  Strategy Id  Pause Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pause",
+        "tags": [
+          "strategies"
+        ]
+      }
+    },
+    "/v1/strategies/{strategy_id}/resume": {
+      "post": {
+        "description": "Resume a strategy.",
+        "operationId": "resume_v1_strategies__strategy_id__resume_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "strategy_id",
+            "required": true,
+            "schema": {
+              "title": "Strategy Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Resume V1 Strategies  Strategy Id  Resume Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Resume",
+        "tags": [
+          "strategies"
+        ]
+      }
+    }
+  }
+}

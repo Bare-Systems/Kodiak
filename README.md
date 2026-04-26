@@ -115,6 +115,20 @@ Importer input can be CSV rows with a `symbol` column, a JSON list of objects, a
 
 The server root `/` intentionally stays minimal. It links to `/health`, `/api/docs`, `/api/v1/schema.json`, and `/mcp/`, but it does not render account, order, or portfolio data. Kodiak remains headless-first: use the CLI for human operation, MCP for agents, and authenticated REST endpoints for integrations.
 
+### Contract Snapshots
+
+Kodiak checks in versioned contract artifacts for its public headless interfaces:
+- `contracts/rest-openapi.v1.json` — generated from the REST OpenAPI schema.
+- `contracts/mcp-tools.v1.json` — generated from the registered MCP tool schemas.
+
+Regenerate snapshots after intentional REST or MCP contract changes:
+```bash
+poetry run python scripts/export_contracts.py
+poetry run python scripts/export_contracts.py --check
+```
+
+CI runs snapshot tests so accidental endpoint, request, response, or MCP tool signature changes fail fast.
+
 `calculate_position_size` supports three methods:
 - `target_value` — size to a desired dollar exposure
 - `target_weight` — size to a desired portfolio weight percentage

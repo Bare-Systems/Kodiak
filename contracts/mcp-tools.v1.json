@@ -1,0 +1,1539 @@
+{
+  "contract_version": "v1",
+  "server": "kodiak",
+  "tool_count": 38,
+  "tools": [
+    {
+      "description": "Analyze realized trade performance (win rate, profit factor, etc.).\n\nArgs:\n    symbol: Filter by ticker. If omitted, analyzes all trades.\n    days: Number of days to look back.\n    limit: Maximum number of trades to analyze.\n",
+      "inputSchema": {
+        "properties": {
+          "days": {
+            "default": 30,
+            "title": "Days",
+            "type": "integer"
+          },
+          "limit": {
+            "default": 1000,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "symbol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Symbol"
+          }
+        },
+        "title": "analyze_performanceArguments",
+        "type": "object"
+      },
+      "name": "analyze_performance",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "analyze_performanceOutput",
+        "type": "object"
+      }
+    },
+    {
+      "description": "Calculate a recommended target position size.\n\nArgs:\n    symbol: Stock ticker (e.g. \"AAPL\").\n    method: One of target_value, target_weight, or risk_budget.\n    price: Optional explicit price override.\n    target_value: Desired total dollar exposure for target_value sizing.\n    target_weight_pct: Desired portfolio weight (%) for target_weight sizing.\n    risk_budget: Dollar risk budget for risk_budget sizing.\n    stop_loss_pct: Stop-loss percentage used with risk_budget sizing.\n    available_capital: Optional override for capital available to deploy.\n    max_position_value: Optional hard cap for total position value.\n    max_position_weight_pct: Optional hard cap for total portfolio weight.\n    lot_size: Round target quantity down to this lot size.\n",
+      "inputSchema": {
+        "properties": {
+          "available_capital": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Available Capital"
+          },
+          "lot_size": {
+            "default": 1,
+            "title": "Lot Size",
+            "type": "integer"
+          },
+          "max_position_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Max Position Value"
+          },
+          "max_position_weight_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Max Position Weight Pct"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Price"
+          },
+          "risk_budget": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Risk Budget"
+          },
+          "stop_loss_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Stop Loss Pct"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "target_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Target Value"
+          },
+          "target_weight_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Target Weight Pct"
+          }
+        },
+        "required": [
+          "symbol",
+          "method"
+        ],
+        "title": "calculate_position_sizeArguments",
+        "type": "object"
+      },
+      "name": "calculate_position_size",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "calculate_position_sizeOutput",
+        "type": "object"
+      }
+    },
+    {
+      "description": "Cancel an open order by ID.\n\nArgs:\n    order_id: The order ID to cancel.\n    confirm_execution: Must be true to cancel an order.\n",
+      "inputSchema": {
+        "properties": {
+          "confirm_execution": {
+            "default": false,
+            "title": "Confirm Execution",
+            "type": "boolean"
+          },
+          "order_id": {
+            "title": "Order Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_id"
+        ],
+        "title": "cancel_orderArguments",
+        "type": "object"
+      },
+      "name": "cancel_order",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "cancel_orderOutput",
+        "type": "object"
+      }
+    },
+    {
+      "description": "Cancel a scheduled strategy.\n\nThis clears the schedule and leaves the strategy in its current state.\n\nArgs:\n    strategy_id: The strategy ID to cancel schedule for.\n",
+      "inputSchema": {
+        "properties": {
+          "strategy_id": {
+            "title": "Strategy Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "strategy_id"
+        ],
+        "title": "cancel_scheduleArguments",
+        "type": "object"
+      },
+      "name": "cancel_schedule",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "cancel_scheduleOutput",
+        "type": "object"
+      }
+    },
+    {
+      "description": "Compare multiple backtests side by side.\n\nArgs:\n    backtest_ids: List of backtest IDs to compare.\n",
+      "inputSchema": {
+        "properties": {
+          "backtest_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Backtest Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "backtest_ids"
+        ],
+        "title": "compare_backtestsArguments",
+        "type": "object"
+      },
+      "name": "compare_backtests",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "compare_backtestsOutput",
+        "type": "object"
+      }
+    },
+    {
+      "description": "Create a new trading strategy.\n\nArgs:\n    strategy_type: One of \"trailing-stop\", \"bracket\", \"scale-out\", \"grid\", \"pullback-trailing\".\n    symbol: Stock ticker (e.g. \"AAPL\").\n    qty: Number of shares per trade.\n    trailing_pct: Trailing stop percentage (for trailing-stop and pullback-trailing).\n    pullback_pct: Pullback % from high to trigger buy (for pullback-trailing, default 5).\n    take_profit: Take profit percentage (for bracket strategy).\n    stop_loss: Stop loss percentage (for bracket strategy).\n    entry_price: Limit entry price. If omitted, uses market order.\n    levels: Number of grid levels (for grid strategy).\n",
+      "inputSchema": {
+        "properties": {
+          "entry_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Entry Price"
+          },
+          "levels": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Levels"
+          },
+          "pullback_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Pullback Pct"
+          },
+          "qty": {
+            "default": 1,
+            "title": "Qty",
+            "type": "integer"
+          },
+          "stop_loss": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Stop Loss"
+          },
+          "strategy_type": {
+            "title": "Strategy Type",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "take_profit": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Take Profit"
+          },
+          "trailing_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Trailing Pct"
+          }
+        },
+        "required": [
+          "strategy_type",
+          "symbol"
+        ],
+        "title": "create_strategyArguments",
+        "type": "object"
+      },
+      "name": "create_strategy",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "create_strategyOutput",
+        "type": "object"
+      }
+    },
+    {
+      "description": "Delete a saved backtest result.\n\nArgs:\n    backtest_id: The backtest ID to delete.\n",
+      "inputSchema": {
+        "properties": {
+          "backtest_id": {
+            "title": "Backtest Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "backtest_id"
+        ],
+        "title": "delete_backtestArguments",
+        "type": "object"
+      },
+      "name": "delete_backtest",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "delete_backtestOutput",
+        "type": "object"
+      }
+    },
+    {
+      "description": "Get detailed information about a specific technical indicator.\n\nArgs:\n    name: Indicator name (e.g. \"sma\", \"rsi\", \"macd\").\n",
+      "inputSchema": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "describe_indicatorArguments",
+        "type": "object"
+      },
+      "name": "describe_indicator",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "describe_indicatorOutput",
+        "type": "object"
+      }
+    },
+    {
+      "description": "Get account balance, equity, buying power, and daily P/L.",
+      "inputSchema": {
+        "properties": {},
+        "title": "get_balanceArguments",
+        "type": "object"
+      },
+      "name": "get_balance",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "get_balanceOutput",
+        "type": "object"
+      }
+    },
+    {
+      "description": "Get historical bars and return stats for a benchmark symbol.\n\nArgs:\n    symbol: Benchmark ticker (e.g. \"SPY\").\n    start: Start date in YYYY-MM-DD format.\n    end: End date in YYYY-MM-DD format.\n    data_source: Optional data source override (\"csv\", \"alpaca\", or \"cached\").\n    timeframe: Bar timeframe (default: \"1Day\").\n",
+      "inputSchema": {
+        "properties": {
+          "data_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Data Source"
+          },
+          "end": {
+            "title": "End",
+            "type": "string"
+          },
+          "start": {
+            "title": "Start",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "timeframe": {
+            "default": "1Day",
+            "title": "Timeframe",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "start",
+          "end"
+        ],
+        "title": "get_benchmark_historyArguments",
+        "type": "object"
+      },
+      "name": "get_benchmark_history",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "get_benchmark_historyOutput",
+        "type": "object"
+      }
+    },
+    {
+      "description": "Get file-backed company fundamentals for a symbol.\n\nArgs:\n    symbol: Stock ticker (e.g. \"AAPL\").\n",
+      "inputSchema": {
+        "properties": {
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol"
+        ],
+        "title": "get_fundamentalsArguments",
+        "type": "object"
+      },
+      "name": "get_fundamentals",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "get_fundamentalsOutput",
+        "type": "object"
+      }
+    },
+    {
+      "description": "Get detailed portfolio summary with position weights and P/L breakdown.",
+      "inputSchema": {
+        "properties": {},
+        "title": "get_portfolioArguments",
+        "type": "object"
+      },
+      "name": "get_portfolio",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "get_portfolioOutput",
+        "type": "object"
+      }
+    },
+    {
+      "description": "Get snapshot-based portfolio analytics versus a benchmark.\n\nArgs:\n    lookback_days: Target trailing window in trading days (default: 252).\n    benchmark_symbol: Benchmark ticker for comparison (default: SPY).\n    end_date: Optional YYYY-MM-DD history end date, useful for CSV datasets.\n",
+      "inputSchema": {
+        "properties": {
+          "benchmark_symbol": {
+            "default": "SPY",
+            "title": "Benchmark Symbol",
+            "type": "string"
+          },
+          "end_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "End Date"
+          },
+          "lookback_days": {
+            "default": 252,
+            "title": "Lookback Days",
+            "type": "integer"
+          }
+        },
+        "title": "get_portfolio_analyticsArguments",
+        "type": "object"
+      },
+      "name": "get_portfolio_analytics",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "get_portfolio_analyticsOutput",
+        "type": "object"
+      }
+    },
+    {
+      "description": "List all open positions with current prices and unrealized P/L.",
+      "inputSchema": {
+        "properties": {},
+        "title": "get_positionsArguments",
+        "type": "object"
+      },
+      "name": "get_positions",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "get_positionsOutput",
+        "type": "object"
+      }
+    },
+    {
+      "description": "Get current bid/ask/last quote for a symbol.\n\nArgs:\n    symbol: Stock ticker (e.g. \"AAPL\", \"MSFT\").\n",
+      "inputSchema": {
+        "properties": {
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol"
+        ],
+        "title": "get_quoteArguments",
+        "type": "object"
+      },
+      "name": "get_quote",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "get_quoteOutput",
+        "type": "object"
+      }
+    },
+    {
+      "description": "Generate a dry-run rebalance plan from target portfolio weights.\n\nArgs:\n    target_weights: Mapping of symbol -> target portfolio weight percent.\n    drift_threshold_pct: Minimum drift (%) before proposing a rebalance trade.\n    cash_buffer_pct: Minimum cash to retain after rebalancing.\n    liquidate_unmentioned: If true, positions not in target_weights are targeted to 0%.\n    lot_size: Round target quantities down to this lot size.\n    max_position_weight_pct: Optional max allowed target weight per symbol.\n",
+      "inputSchema": {
+        "properties": {
+          "cash_buffer_pct": {
+            "default": 0,
+            "title": "Cash Buffer Pct",
+            "type": "number"
+          },
+          "drift_threshold_pct": {
+            "default": 1,
+            "title": "Drift Threshold Pct",
+            "type": "number"
+          },
+          "liquidate_unmentioned": {
+            "default": false,
+            "title": "Liquidate Unmentioned",
+            "type": "boolean"
+          },
+          "lot_size": {
+            "default": 1,
+            "title": "Lot Size",
+            "type": "integer"
+          },
+          "max_position_weight_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Max Position Weight Pct"
+          },
+          "target_weights": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Target Weights",
+            "type": "object"
+          }
+        },
+        "required": [
+          "target_weights"
+        ],
+        "title": "get_rebalance_planArguments",
+        "type": "object"
+      },
+      "name": "get_rebalance_plan",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "get_rebalance_planOutput",
+        "type": "object"
+      }
+    },
+    {
+      "description": "Get current safety check status and limits.\n\nReturns position size limits, daily loss limits, and trade count limits.\n",
+      "inputSchema": {
+        "properties": {},
+        "title": "get_safety_statusArguments",
+        "type": "object"
+      },
+      "name": "get_safety_status",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "get_safety_statusOutput",
+        "type": "object"
+      }
+    },
+    {
+      "description": "Get current Kodiak engine status.\n\nReturns engine running state, environment (paper/prod),\nbroker service, API key configuration, active strategy count,\nand process ID if running. Check the 'hint' field for actionable\nguidance when the engine is not running or misconfigured.\n",
+      "inputSchema": {
+        "properties": {},
+        "title": "get_statusArguments",
+        "type": "object"
+      },
+      "name": "get_status",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "get_statusOutput",
+        "type": "object"
+      }
+    },
+    {
+      "description": "Get detailed information about a specific strategy.\n\nArgs:\n    strategy_id: The strategy ID.\n",
+      "inputSchema": {
+        "properties": {
+          "strategy_id": {
+            "title": "Strategy Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "strategy_id"
+        ],
+        "title": "get_strategyArguments",
+        "type": "object"
+      },
+      "name": "get_strategy",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "get_strategyOutput",
+        "type": "object"
+      }
+    },
+    {
+      "description": "Get today's realized profit/loss.",
+      "inputSchema": {
+        "properties": {},
+        "title": "get_today_pnlArguments",
+        "type": "object"
+      },
+      "name": "get_today_pnl",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "get_today_pnlOutput",
+        "type": "object"
+      }
+    },
+    {
+      "description": "Get top market movers (gainers and losers).\n\nArgs:\n    market_type: Market type ('stocks' or 'crypto'). Defaults to 'stocks'.\n    limit: Maximum number of gainers/losers to return. Defaults to 10.\n",
+      "inputSchema": {
+        "properties": {
+          "limit": {
+            "default": 10,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "market_type": {
+            "default": "stocks",
+            "title": "Market Type",
+            "type": "string"
+          }
+        },
+        "title": "get_top_moversArguments",
+        "type": "object"
+      },
+      "name": "get_top_movers",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "get_top_moversOutput",
+        "type": "object"
+      }
+    },
+    {
+      "description": "Get recent trade records.\n\nArgs:\n    symbol: Filter by ticker. If omitted, returns all symbols.\n    limit: Maximum number of trades to return.\n",
+      "inputSchema": {
+        "properties": {
+          "limit": {
+            "default": 20,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "symbol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Symbol"
+          }
+        },
+        "title": "get_trade_historyArguments",
+        "type": "object"
+      },
+      "name": "get_trade_history",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "get_trade_historyOutput",
+        "type": "object"
+      }
+    },
+    {
+      "description": "List all saved backtest results.",
+      "inputSchema": {
+        "properties": {},
+        "title": "list_backtestsArguments",
+        "type": "object"
+      },
+      "name": "list_backtests",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "list_backtestsOutput",
+        "type": "object"
+      }
+    },
+    {
+      "description": "List all available technical indicators (SMA, RSI, MACD, etc.).",
+      "inputSchema": {
+        "properties": {},
+        "title": "list_indicatorsArguments",
+        "type": "object"
+      },
+      "name": "list_indicators",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "list_indicatorsOutput",
+        "type": "object"
+      }
+    },
+    {
+      "description": "List orders. By default shows only open/pending orders.\n\nArgs:\n    show_all: If true, include filled, cancelled, and expired orders.\n",
+      "inputSchema": {
+        "properties": {
+          "show_all": {
+            "default": false,
+            "title": "Show All",
+            "type": "boolean"
+          }
+        },
+        "title": "list_ordersArguments",
+        "type": "object"
+      },
+      "name": "list_orders",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "list_ordersOutput",
+        "type": "object"
+      }
+    },
+    {
+      "description": "List all strategies with active schedules.\n\nReturns a list of strategies that are scheduled to start at a future time.\n",
+      "inputSchema": {
+        "properties": {},
+        "title": "list_scheduled_strategiesArguments",
+        "type": "object"
+      },
+      "name": "list_scheduled_strategies",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "list_scheduled_strategiesOutput",
+        "type": "object"
+      }
+    },
+    {
+      "description": "List all configured trading strategies.",
+      "inputSchema": {
+        "properties": {},
+        "title": "list_strategiesArguments",
+        "type": "object"
+      },
+      "name": "list_strategies",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "list_strategiesOutput",
+        "type": "object"
+      }
+    },
+    {
+      "description": "Pause an active strategy.\n\nArgs:\n    strategy_id: The strategy ID to pause.\n",
+      "inputSchema": {
+        "properties": {
+          "strategy_id": {
+            "title": "Strategy Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "strategy_id"
+        ],
+        "title": "pause_strategyArguments",
+        "type": "object"
+      },
+      "name": "pause_strategy",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "pause_strategyOutput",
+        "type": "object"
+      }
+    },
+    {
+      "description": "Place a limit order (with safety checks).\n\nArgs:\n    symbol: Stock ticker (e.g. \"AAPL\").\n    qty: Number of shares (must be >= 1).\n    side: \"buy\" or \"sell\".\n    price: Limit price per share.\n    confirm_execution: Must be true to place an order.\n",
+      "inputSchema": {
+        "properties": {
+          "confirm_execution": {
+            "default": false,
+            "title": "Confirm Execution",
+            "type": "boolean"
+          },
+          "price": {
+            "title": "Price",
+            "type": "number"
+          },
+          "qty": {
+            "title": "Qty",
+            "type": "integer"
+          },
+          "side": {
+            "title": "Side",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "qty",
+          "side",
+          "price"
+        ],
+        "title": "place_orderArguments",
+        "type": "object"
+      },
+      "name": "place_order",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "place_orderOutput",
+        "type": "object"
+      }
+    },
+    {
+      "description": "Delete a strategy by ID.\n\nArgs:\n    strategy_id: The strategy ID to remove.\n",
+      "inputSchema": {
+        "properties": {
+          "strategy_id": {
+            "title": "Strategy Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "strategy_id"
+        ],
+        "title": "remove_strategyArguments",
+        "type": "object"
+      },
+      "name": "remove_strategy",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "remove_strategyOutput",
+        "type": "object"
+      }
+    },
+    {
+      "description": "Resume a paused strategy.\n\nArgs:\n    strategy_id: The strategy ID to resume.\n",
+      "inputSchema": {
+        "properties": {
+          "strategy_id": {
+            "title": "Strategy Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "strategy_id"
+        ],
+        "title": "resume_strategyArguments",
+        "type": "object"
+      },
+      "name": "resume_strategy",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "resume_strategyOutput",
+        "type": "object"
+      }
+    },
+    {
+      "description": "Run a backtest on historical data.\n\nSubject to MCP rate limits and timeout (see MCP_BACKTEST_TIMEOUT_SECONDS).\n\nArgs:\n    strategy_type: \"trailing-stop\" or \"bracket\".\n    symbol: Stock ticker (e.g. \"AAPL\").\n    start: Start date (YYYY-MM-DD).\n    end: End date (YYYY-MM-DD).\n    qty: Shares per trade.\n    trailing_pct: Trailing stop percentage (trailing-stop strategy).\n    take_profit: Take profit percentage (bracket strategy).\n    stop_loss: Stop loss percentage (bracket strategy).\n    data_source: \"csv\" or \"alpaca\".\n    initial_capital: Starting capital for simulation.\n    save: Whether to save results to disk.\n",
+      "inputSchema": {
+        "properties": {
+          "data_source": {
+            "default": "csv",
+            "title": "Data Source",
+            "type": "string"
+          },
+          "end": {
+            "title": "End",
+            "type": "string"
+          },
+          "initial_capital": {
+            "default": 100000.0,
+            "title": "Initial Capital",
+            "type": "number"
+          },
+          "qty": {
+            "default": 10,
+            "title": "Qty",
+            "type": "integer"
+          },
+          "save": {
+            "default": true,
+            "title": "Save",
+            "type": "boolean"
+          },
+          "start": {
+            "title": "Start",
+            "type": "string"
+          },
+          "stop_loss": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Stop Loss"
+          },
+          "strategy_type": {
+            "title": "Strategy Type",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "take_profit": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Take Profit"
+          },
+          "trailing_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Trailing Pct"
+          }
+        },
+        "required": [
+          "strategy_type",
+          "symbol",
+          "start",
+          "end"
+        ],
+        "title": "run_backtestArguments",
+        "type": "object"
+      },
+      "name": "run_backtest",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "run_backtestOutput",
+        "type": "object"
+      }
+    },
+    {
+      "description": "Run parameter optimization over a grid of strategy parameters.\n\nSubject to MCP rate limits and timeout (see MCP_OPTIMIZATION_TIMEOUT_SECONDS).\n\nArgs:\n    strategy_type: \"trailing-stop\" or \"bracket\".\n    symbol: Stock ticker (e.g. \"AAPL\").\n    start: Start date (YYYY-MM-DD).\n    end: End date (YYYY-MM-DD).\n    params: Parameter grid. Accepts both short and canonical names:\n        - For trailing-stop: \"trailing_pct\" or \"trailing_stop_pct\"\n        - For bracket: \"take_profit\"/\"take_profit_pct\" and \"stop_loss\"/\"stop_loss_pct\"\n        Example: {\"take_profit\": [0.02, 0.05], \"stop_loss\": [0.01, 0.02]}\n    objective: Metric to optimize (\"total_return_pct\", \"sharpe_ratio\", \"win_rate\", etc.).\n    method: \"grid\" for exhaustive search or \"random\" for sampling.\n    num_samples: Number of random samples (only for method=\"random\").\n    data_source: \"csv\" or \"alpaca\".\n    initial_capital: Starting capital for simulation.\n    save: Whether to save results to disk.\n",
+      "inputSchema": {
+        "properties": {
+          "data_source": {
+            "default": "csv",
+            "title": "Data Source",
+            "type": "string"
+          },
+          "end": {
+            "title": "End",
+            "type": "string"
+          },
+          "initial_capital": {
+            "default": 100000.0,
+            "title": "Initial Capital",
+            "type": "number"
+          },
+          "method": {
+            "default": "grid",
+            "title": "Method",
+            "type": "string"
+          },
+          "num_samples": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Num Samples"
+          },
+          "objective": {
+            "default": "total_return_pct",
+            "title": "Objective",
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": {
+              "items": {},
+              "type": "array"
+            },
+            "title": "Params",
+            "type": "object"
+          },
+          "save": {
+            "default": true,
+            "title": "Save",
+            "type": "boolean"
+          },
+          "start": {
+            "title": "Start",
+            "type": "string"
+          },
+          "strategy_type": {
+            "title": "Strategy Type",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "strategy_type",
+          "symbol",
+          "start",
+          "end",
+          "params"
+        ],
+        "title": "run_optimizationArguments",
+        "type": "object"
+      },
+      "name": "run_optimization",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "run_optimizationOutput",
+        "type": "object"
+      }
+    },
+    {
+      "description": "Schedule a strategy to start at a specific time.\n\nThe strategy will be disabled until the schedule time arrives.\nOnce the time arrives, the engine will automatically enable it.\n\nArgs:\n    strategy_id: The strategy ID to schedule.\n    schedule_at: ISO datetime string (e.g., \"2026-02-13T09:30:00\").\n",
+      "inputSchema": {
+        "properties": {
+          "schedule_at": {
+            "title": "Schedule At",
+            "type": "string"
+          },
+          "strategy_id": {
+            "title": "Strategy Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "strategy_id",
+          "schedule_at"
+        ],
+        "title": "schedule_strategyArguments",
+        "type": "object"
+      },
+      "name": "schedule_strategy",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "schedule_strategyOutput",
+        "type": "object"
+      }
+    },
+    {
+      "description": "Enable or disable a strategy.\n\nArgs:\n    strategy_id: The strategy ID.\n    enabled: True to enable, False to disable.\n",
+      "inputSchema": {
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "strategy_id": {
+            "title": "Strategy Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "strategy_id",
+          "enabled"
+        ],
+        "title": "set_strategy_enabledArguments",
+        "type": "object"
+      },
+      "name": "set_strategy_enabled",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "set_strategy_enabledOutput",
+        "type": "object"
+      }
+    },
+    {
+      "description": "Get full results for a specific backtest.\n\nArgs:\n    backtest_id: The backtest ID.\n",
+      "inputSchema": {
+        "properties": {
+          "backtest_id": {
+            "title": "Backtest Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "backtest_id"
+        ],
+        "title": "show_backtestArguments",
+        "type": "object"
+      },
+      "name": "show_backtest",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "show_backtestOutput",
+        "type": "object"
+      }
+    },
+    {
+      "description": "Start the trading engine as a background process.\n\nSpawns the engine detached so this call returns immediately.\nThe engine will run until stopped with stop_engine().\nOnly paper trading is supported via MCP (use CLI --prod for production).\n\nArgs:\n    dry_run:  If true, evaluate strategies but do not place real orders.\n    interval: Strategy poll interval in seconds (default: 60).\n    confirm_execution: Must be true to start the engine process.\n",
+      "inputSchema": {
+        "properties": {
+          "confirm_execution": {
+            "default": false,
+            "title": "Confirm Execution",
+            "type": "boolean"
+          },
+          "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "interval": {
+            "default": 60,
+            "title": "Interval",
+            "type": "integer"
+          }
+        },
+        "title": "start_engineArguments",
+        "type": "object"
+      },
+      "name": "start_engine",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "start_engineOutput",
+        "type": "object"
+      }
+    },
+    {
+      "description": "Stop the running trading engine.\n\nArgs:\n    force: If true, send SIGKILL instead of SIGTERM.\n    confirm_execution: Must be true to stop the engine process.\n",
+      "inputSchema": {
+        "properties": {
+          "confirm_execution": {
+            "default": false,
+            "title": "Confirm Execution",
+            "type": "boolean"
+          },
+          "force": {
+            "default": false,
+            "title": "Force",
+            "type": "boolean"
+          }
+        },
+        "title": "stop_engineArguments",
+        "type": "object"
+      },
+      "name": "stop_engine",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "stop_engineOutput",
+        "type": "object"
+      }
+    }
+  ]
+}
