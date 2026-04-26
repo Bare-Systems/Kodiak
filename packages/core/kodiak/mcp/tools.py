@@ -60,7 +60,11 @@ def get_status() -> str:
         return _err(e)
 
 
-def start_engine(dry_run: bool = False, interval: int = 60) -> str:
+def start_engine(
+    dry_run: bool = False,
+    interval: int = 60,
+    confirm_execution: bool = False,
+) -> str:
     """Start the trading engine as a background process.
 
     Spawns the engine detached so this call returns immediately.
@@ -70,25 +74,33 @@ def start_engine(dry_run: bool = False, interval: int = 60) -> str:
     Args:
         dry_run:  If true, evaluate strategies but do not place real orders.
         interval: Strategy poll interval in seconds (default: 60).
+        confirm_execution: Must be true to start the engine process.
     """
     from kodiak.app.engine import start_engine as _start_engine
 
     try:
-        return _ok(_start_engine(dry_run=dry_run, interval=interval))
+        return _ok(
+            _start_engine(
+                dry_run=dry_run,
+                interval=interval,
+                confirm_execution=confirm_execution,
+            )
+        )
     except AppError as e:
         return _err(e)
 
 
-def stop_engine(force: bool = False) -> str:
+def stop_engine(force: bool = False, confirm_execution: bool = False) -> str:
     """Stop the running trading engine.
 
     Args:
         force: If true, send SIGKILL instead of SIGTERM.
+        confirm_execution: Must be true to stop the engine process.
     """
     from kodiak.app.engine import stop_engine as _stop_engine
 
     try:
-        return _ok(_stop_engine(force=force))
+        return _ok(_stop_engine(force=force, confirm_execution=confirm_execution))
     except AppError as e:
         return _err(e)
 
@@ -383,7 +395,13 @@ def get_benchmark_history(
 # =============================================================================
 
 
-def place_order(symbol: str, qty: int, side: str, price: float) -> str:
+def place_order(
+    symbol: str,
+    qty: int,
+    side: str,
+    price: float,
+    confirm_execution: bool = False,
+) -> str:
     """Place a limit order (with safety checks).
 
     Args:
@@ -391,6 +409,7 @@ def place_order(symbol: str, qty: int, side: str, price: float) -> str:
         qty: Number of shares (must be >= 1).
         side: "buy" or "sell".
         price: Limit price per share.
+        confirm_execution: Must be true to place an order.
     """
     from kodiak.app.orders import place_order as _place_order
     from kodiak.schemas.orders import OrderRequest
@@ -402,7 +421,7 @@ def place_order(symbol: str, qty: int, side: str, price: float) -> str:
             side=side.lower(),
             price=Decimal(str(price)),
         )
-        return _ok(_place_order(_config(), request))
+        return _ok(_place_order(_config(), request, confirm_execution=confirm_execution))
     except AppError as e:
         return _err(e)
 
@@ -424,16 +443,17 @@ def list_orders(show_all: bool = False) -> str:
         return _err(e)
 
 
-def cancel_order(order_id: str) -> str:
+def cancel_order(order_id: str, confirm_execution: bool = False) -> str:
     """Cancel an open order by ID.
 
     Args:
         order_id: The order ID to cancel.
+        confirm_execution: Must be true to cancel an order.
     """
     from kodiak.app.orders import cancel_order as _cancel_order
 
     try:
-        return _ok(_cancel_order(_config(), order_id))
+        return _ok(_cancel_order(_config(), order_id, confirm_execution=confirm_execution))
     except AppError as e:
         return _err(e)
 

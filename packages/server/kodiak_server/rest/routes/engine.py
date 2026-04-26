@@ -25,19 +25,28 @@ def status(ctx: RequestContext = Depends(get_request_context)) -> dict[str, Any]
 class StartRequest(BaseModel):
     dry_run: bool = False
     interval: int = 60
+    confirm_execution: bool = False
 
 
 @router.post("/start")
 def start(req: StartRequest, ctx: RequestContext = Depends(get_request_context)) -> dict[str, Any]:
     """Start the trading engine."""
-    return ok(start_engine(dry_run=req.dry_run, interval=req.interval), ctx.request_id)
+    return ok(
+        start_engine(
+            dry_run=req.dry_run,
+            interval=req.interval,
+            confirm_execution=req.confirm_execution,
+        ),
+        ctx.request_id,
+    )
 
 
 class StopRequest(BaseModel):
     force: bool = False
+    confirm_execution: bool = False
 
 
 @router.post("/stop")
 def stop(req: StopRequest, ctx: RequestContext = Depends(get_request_context)) -> dict[str, Any]:
     """Stop the trading engine."""
-    return ok(stop_engine(force=req.force), ctx.request_id)
+    return ok(stop_engine(force=req.force, confirm_execution=req.confirm_execution), ctx.request_id)

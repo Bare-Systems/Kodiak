@@ -460,7 +460,7 @@ def buy(ctx: click.Context, symbol: str, price: float, qty: int) -> None:
             msg = f"Placing LIMIT BUY: {qty} {symbol.upper()} @ ${price:.2f}"
             console.print(f"[yellow]{msg}[/yellow]")
 
-        result = place_order(config, request)
+        result = place_order(config, request, confirm_execution=True)
 
         if as_json:
             _json_output(result)
@@ -513,7 +513,7 @@ def sell(ctx: click.Context, symbol: str, price: float, qty: int) -> None:
             msg = f"Placing LIMIT SELL: {qty} {symbol.upper()} @ ${price:.2f}"
             console.print(f"[yellow]{msg}[/yellow]")
 
-        result = place_order(config, request)
+        result = place_order(config, request, confirm_execution=True)
 
         if as_json:
             _json_output(result)
@@ -587,7 +587,7 @@ def cancel(ctx: click.Context, order_id: str) -> None:
     as_json = _get_json_flag(ctx)
 
     try:
-        result = cancel_order(config, order_id)
+        result = cancel_order(config, order_id, confirm_execution=True)
         if as_json:
             _json_output(result)
         else:
@@ -641,7 +641,9 @@ def start(ctx: click.Context, dry_run: bool, interval: int, once: bool, force: b
         trader --prod start
     """
     from kodiak.app import get_broker
+    from kodiak.audit import log_action as audit_log
     from kodiak.core.engine import EngineAlreadyRunningError, TradingEngine, get_lock_file_path
+    from kodiak.policy import ActionType, add_policy_details, evaluate_execution_policy
     from kodiak.strategies.loader import load_strategies
 
     config = ctx.obj["config"]
@@ -699,6 +701,24 @@ def start(ctx: click.Context, dry_run: bool, interval: int, once: bool, force: b
     console.print()
 
     try:
+        policy_decision = evaluate_execution_policy(
+            "start_engine",
+            action_type=ActionType.EXECUTE,
+            execution_intent=True,
+        )
+        audit_log(
+            "start_engine",
+            add_policy_details(
+                {
+                    "dry_run": dry_run,
+                    "interval": interval,
+                    "once": once,
+                    "force": force,
+                },
+                policy_decision,
+            ),
+            log_dir=config.log_dir,
+        )
         if once:
             order_ids = engine.run_once(acquire_lock=True)
             if order_ids:
@@ -735,7 +755,9 @@ def run_once_cmd(ctx: click.Context, dry_run: bool, force: bool) -> None:
         */5 * * * * trader run-once
     """
     from kodiak.app import get_broker
+    from kodiak.audit import log_action as audit_log
     from kodiak.core.engine import EngineAlreadyRunningError, TradingEngine, get_lock_file_path
+    from kodiak.policy import ActionType, add_policy_details, evaluate_execution_policy
 
     config = ctx.obj["config"]
 
@@ -762,6 +784,19 @@ def run_once_cmd(ctx: click.Context, dry_run: bool, force: bool) -> None:
     )
 
     try:
+        policy_decision = evaluate_execution_policy(
+            "run_once",
+            action_type=ActionType.EXECUTE,
+            execution_intent=True,
+        )
+        audit_log(
+            "run_once",
+            add_policy_details(
+                {"dry_run": dry_run, "force": force},
+                policy_decision,
+            ),
+            log_dir=config.log_dir,
+        )
         order_ids = engine.run_once(acquire_lock=True)
         if order_ids:
             console.print(f"[green]Executed {len(order_ids)} strategy actions[/green]")
@@ -876,7 +911,7 @@ def stop(ctx: click.Context, force: bool) -> None:
     as_json = _get_json_flag(ctx)
 
     try:
-        result = stop_engine(force=force)
+        result = stop_engine(force=force, confirm_execution=True)
         if as_json:
             _json_output(result)
         else:

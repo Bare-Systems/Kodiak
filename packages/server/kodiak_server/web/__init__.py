@@ -1,8 +1,4 @@
-"""Kodiak Web UI (stub).
-
-Serves a minimal status dashboard. Will be replaced with
-a full SPA when the web UI becomes a priority.
-"""
+"""Kodiak headless server landing page."""
 
 from __future__ import annotations
 
@@ -16,12 +12,12 @@ TEMPLATE_DIR = Path(__file__).parent / "templates"
 
 
 def create_web_app() -> FastAPI:
-    """Create the web UI application."""
+    """Create the minimal headless server landing page."""
     app = FastAPI()
     templates = Jinja2Templates(directory=str(TEMPLATE_DIR))
 
     @app.get("/", response_class=HTMLResponse)
     async def index(request: Request) -> HTMLResponse:
-        return templates.TemplateResponse("index.html", {"request": request})
+        return templates.TemplateResponse(request, "index.html")
 
     return app

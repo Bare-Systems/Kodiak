@@ -6,6 +6,7 @@ import os
 import signal
 
 from kodiak.errors import EngineError
+from kodiak.policy import add_policy_details, require_execution_intent
 from kodiak.schemas.engine import EngineStatus
 from kodiak.utils.config import Config
 
@@ -71,7 +72,12 @@ def get_engine_status(config: Config) -> EngineStatus:
     )
 
 
-def start_engine(dry_run: bool = False, interval: int = 60) -> dict[str, str]:
+def start_engine(
+    dry_run: bool = False,
+    interval: int = 60,
+    *,
+    confirm_execution: bool = False,
+) -> dict[str, str]:
     """Start the trading engine as a background process.
 
     Spawns `kodiak start` as a detached subprocess so the call returns
@@ -93,6 +99,16 @@ def start_engine(dry_run: bool = False, interval: int = 60) -> dict[str, str]:
     import time
 
     from kodiak.core.engine import get_lock_file_path
+    from kodiak.utils.config import load_config
+
+    config = load_config()
+    policy_details = {"dry_run": dry_run, "interval": interval}
+    policy_decision = require_execution_intent(
+        "start_engine",
+        execution_intent=confirm_execution,
+        log_dir=config.log_dir,
+        details=policy_details,
+    )
 
     # Refuse if already running.
     lock_path = get_lock_file_path()
@@ -133,12 +149,11 @@ def start_engine(dry_run: bool = False, interval: int = 60) -> dict[str, str]:
     time.sleep(1.5)
 
     from kodiak.audit import log_action as audit_log
-    from kodiak.utils.config import load_config
 
     audit_log(
         "start_engine",
-        {"pid": proc.pid, "dry_run": dry_run, "interval": interval},
-        log_dir=load_config().log_dir,
+        add_policy_details({**policy_details, "pid": proc.pid}, policy_decision),
+        log_dir=config.log_dir,
     )
 
     return {
@@ -149,7 +164,7 @@ def start_engine(dry_run: bool = False, interval: int = 60) -> dict[str, str]:
     }
 
 
-def stop_engine(force: bool = False) -> dict[str, str]:
+def stop_engine(force: bool = False, *, confirm_execution: bool = False) -> dict[str, str]:
     """Stop the running trading engine.
 
     Args:
@@ -162,6 +177,16 @@ def stop_engine(force: bool = False) -> dict[str, str]:
         EngineError: If engine is not running or cannot be stopped.
     """
     from kodiak.core.engine import get_lock_file_path
+    from kodiak.utils.config import load_config
+
+    config = load_config()
+    policy_details = {"force": force}
+    policy_decision = require_execution_intent(
+        "stop_engine",
+        execution_intent=confirm_execution,
+        log_dir=config.log_dir,
+        details=policy_details,
+    )
 
     lock_path = get_lock_file_path()
 
@@ -214,12 +239,11 @@ def stop_engine(force: bool = False) -> dict[str, str]:
     try:
         os.kill(pid, sig)
         from kodiak.audit import log_action as audit_log
-        from kodiak.utils.config import load_config
 
         audit_log(
             "stop_engine",
-            {"pid": pid, "force": force},
-            log_dir=load_config().log_dir,
+            add_policy_details({**policy_details, "pid": pid}, policy_decision),
+            log_dir=config.log_dir,
         )
         if force:
             try:

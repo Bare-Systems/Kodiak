@@ -108,6 +108,19 @@ class SafetyError(AppError):
         super().__init__(message, code, details, suggestion)
 
 
+class PolicyError(AppError):
+    """Action blocked by execution policy."""
+
+    def __init__(
+        self,
+        message: str,
+        code: str = "POLICY_BLOCKED",
+        details: dict[str, Any] | None = None,
+        suggestion: str | None = None,
+    ) -> None:
+        super().__init__(message, code, details, suggestion)
+
+
 class EngineError(AppError):
     """Engine state error (already running, not running, etc.)."""
 

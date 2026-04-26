@@ -1,7 +1,7 @@
 [project]
 name = "kodiak-server"
 version = "2.0.0"
-description = "Kodiak persistent server with REST API, MCP, and web UI"
+description = "Kodiak persistent headless server with REST API, MCP, and a landing page"
 authors = [
     {name = "Joe Caruso"}
 ]

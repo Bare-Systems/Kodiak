@@ -15,6 +15,7 @@ from kodiak.errors import (
     ConfigurationError,
     EngineError,
     NotFoundError,
+    PolicyError,
 )
 from kodiak.schemas.engine import EngineStatus
 from kodiak.schemas.indicators import IndicatorInfo
@@ -64,8 +65,10 @@ class TestEngineServices:
 
     def test_stop_engine_not_running(self) -> None:
         """Should raise EngineError if no engine is running."""
-        with pytest.raises(EngineError):
+        with pytest.raises(PolicyError):
             stop_engine(force=False)
+        with pytest.raises(EngineError):
+            stop_engine(force=False, confirm_execution=True)
 
 
 class TestStrategyServices:

@@ -15,7 +15,7 @@ Trade lifecycle automation with a human-first CLI and agent-first MCP interface.
 
 Kodiak is a **Python monorepo** with two products:
 - **Kodiak CLI** (`kodiak`) — Ad-hoc calculations, predefined workloads, manual trading, and stdio MCP for local agents.
-- **Kodiak Server** (`kodiak-server`) — Persistent service with REST API, streamable HTTP MCP, web UI, and scheduling for remote integrations.
+- **Kodiak Server** (`kodiak-server`) — Headless persistent service with REST API, streamable HTTP MCP, a minimal landing page, and scheduling for remote integrations.
 
 Both share a common core library (`kodiak-core`). The system supports paper and live trading via Alpaca, with strategy automation that manages the full trade lifecycle from entry to exit. From 2.0.0 onward, architecture and interfaces are stable; breaking changes are rare and clearly noted in [CHANGELOG](CHANGELOG.md).
 
@@ -102,12 +102,48 @@ If an agent will run CSV-backed MCP tools such as `run_backtest`, `run_optimizat
 
 `get_benchmark_history` also uses the configured historical data provider and returns normalized bars plus first close, latest close, and period return. `get_fundamentals` reads file-backed data from `FUNDAMENTALS_DATA_DIR` when set, otherwise from `data/fundamentals`. Supported layouts are `{SYMBOL}.json`, `fundamentals.json`, or `fundamentals.csv` with a `symbol` column.
 
+To import fundamentals from a vendor export or manually maintained file:
+```bash
+poetry run python scripts/import_fundamentals.py /path/to/fundamentals.csv
+poetry run python scripts/import_fundamentals.py /path/to/fundamentals.json --format json-files
+poetry run python scripts/import_fundamentals.py /path/to/fundamentals.csv --max-age-days 120
+```
+
+Importer input can be CSV rows with a `symbol` column, a JSON list of objects, a single JSON object with `symbol`, or a JSON symbol map. Numeric fields are validated and non-finite values are rejected.
+
+### Headless Server Landing Page
+
+The server root `/` intentionally stays minimal. It links to `/health`, `/api/docs`, `/api/v1/schema.json`, and `/mcp/`, but it does not render account, order, or portfolio data. Kodiak remains headless-first: use the CLI for human operation, MCP for agents, and authenticated REST endpoints for integrations.
+
 `calculate_position_size` supports three methods:
 - `target_value` — size to a desired dollar exposure
 - `target_weight` — size to a desired portfolio weight percentage
 - `risk_budget` — size from a dollar risk budget plus `stop_loss_pct`
 
 `get_rebalance_plan` is planning-only. It returns proposed buy/sell quantities from a target weight map, optional drift threshold, optional cash buffer, and an option to liquidate symbols omitted from the target set.
+
+Sensitive execution operations are guarded by Kodiak's headless execution policy. REST and MCP calls that place orders, cancel orders, start the engine, or stop the engine must pass `confirm_execution=true`; otherwise Kodiak returns `POLICY_BLOCKED` and writes an audit entry with the policy decision. CLI commands pass this intent explicitly because the user has invoked an execution command directly.
+
+REST examples:
+```bash
+# Blocked: missing explicit execution intent
+curl -X POST http://localhost:8000/api/v1/engine/stop \
+  -H "Authorization: Bearer $KODIAK_API_TOKEN" \
+  -H "X-Kodiak-Actor: operator@example.com" \
+  -d '{"force": false}'
+
+# Confirmed: reaches the engine state check
+curl -X POST http://localhost:8000/api/v1/engine/stop \
+  -H "Authorization: Bearer $KODIAK_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"force": false, "confirm_execution": true}'
+```
+
+MCP examples:
+```json
+{"tool": "stop_engine", "arguments": {"force": false}}
+{"tool": "stop_engine", "arguments": {"force": false, "confirm_execution": true}}
+```
 
 **Quick Start**: See Installation and Configuration sections below.
 
@@ -186,7 +222,7 @@ poetry run kodiak-server
 Server runs on `http://localhost:8000` with:
 - REST API at `/api/`
 - MCP endpoint at `/mcp/`
-- Web UI at `/`
+- Minimal headless landing page at `/`
 
 Remote agents connect to `http://localhost:8000/mcp/` for MCP.
 

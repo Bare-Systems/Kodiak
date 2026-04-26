@@ -28,7 +28,7 @@ from kodiak.utils.logging import clear_log_context, get_logger, log_event, set_l
 
 from kodiak_server.rest.context import get_current_request_id, set_request_context
 from kodiak_server.rest.response import err
-from kodiak_server.rest.routes import engine, orders, portfolio, research, strategies
+from kodiak_server.rest.routes import engine, orders, portfolio, research, safety, strategies
 
 
 def create_rest_app() -> FastAPI:
@@ -138,6 +138,7 @@ def create_rest_app() -> FastAPI:
     v1.include_router(portfolio.router, tags=["portfolio"])
     v1.include_router(research.router, tags=["research"])
     v1.include_router(orders.router, tags=["orders"])
+    v1.include_router(safety.router, tags=["safety"])
     v1.include_router(strategies.router, tags=["strategies"])
 
     # Schema export: GET /api/v1/schema.json returns the OpenAPI spec.

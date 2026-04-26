@@ -22,6 +22,7 @@ class PlaceOrderRequest(BaseModel):
     qty: int
     side: str = "buy"
     price: float
+    confirm_execution: bool = False
 
 
 @router.post("/")
@@ -40,6 +41,7 @@ def create_order(
                 side=req.side,
                 price=Decimal(str(req.price)),
             ),
+            confirm_execution=req.confirm_execution,
         ),
         ctx.request_id,
     )
@@ -58,8 +60,12 @@ def get_orders(
 @router.delete("/{order_id}")
 def delete_order(
     order_id: str,
+    confirm_execution: bool = Query(False),
     ctx: RequestContext = Depends(get_request_context),
 ) -> dict[str, Any]:
     """Cancel an order."""
     config = load_config()
-    return ok(cancel_order(config, order_id=order_id), ctx.request_id)
+    return ok(
+        cancel_order(config, order_id=order_id, confirm_execution=confirm_execution),
+        ctx.request_id,
+    )

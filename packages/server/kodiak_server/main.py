@@ -3,7 +3,7 @@
 Runs a FastAPI application with:
 - REST API at /api/v1/
 - MCP server (streamable HTTP) at /mcp/
-- Web UI at /
+- Minimal headless landing page at /
 """
 
 from __future__ import annotations
@@ -100,7 +100,7 @@ def create_app() -> Any:
     mcp_app = create_mcp_app()
     app.mount("/mcp", mcp_app)
 
-    # Mount Web UI (must be last — catches remaining routes)
+    # Mount landing page (must be last — catches remaining routes)
     web_app = create_web_app()
     app.mount("/", web_app)
 
@@ -140,7 +140,7 @@ def main() -> None:
     logger.info("API docs: http://%s:%s/api/docs", args.host, args.port)
     logger.info("Schema: http://%s:%s/api/v1/schema.json", args.host, args.port)
     logger.info("MCP: http://%s:%s/mcp/", args.host, args.port)
-    logger.info("Web UI: http://%s:%s/", args.host, args.port)
+    logger.info("Landing page: http://%s:%s/", args.host, args.port)
 
     uvicorn.run(
         "kodiak_server.main:create_app",

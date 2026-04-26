@@ -8,8 +8,10 @@ Tools that require broker/API may return errors in CI; we still assert contract.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Any
 
+import pytest
 from kodiak.schemas.engine import EngineStatus
 from kodiak.schemas.errors import ErrorResponse
 from kodiak.schemas.indicators import IndicatorInfo
@@ -96,6 +98,58 @@ class TestContractStopEngine:
         else:
             # Success: at least some response (e.g. status)
             assert isinstance(data, dict)
+
+    def test_stop_engine_requires_execution_confirmation(self) -> None:
+        from kodiak.mcp.tools import stop_engine
+
+        result = stop_engine()
+        data = _parse(result)
+
+        assert isinstance(data, dict)
+        assert data["error"] == "POLICY_BLOCKED"
+        assert data["details"]["policy"]["action"] == "stop_engine"
+
+    def test_stop_engine_confirmation_reaches_engine_state(self) -> None:
+        from kodiak.mcp.tools import stop_engine
+
+        result = stop_engine(confirm_execution=True)
+        data = _parse(result)
+
+        assert isinstance(data, dict)
+        if _is_error(data):
+            assert data["error"] != "POLICY_BLOCKED"
+            _assert_error_contract(data)
+        else:
+            assert "status" in data
+
+    def test_blocked_mcp_execution_audit_includes_policy(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        from kodiak.audit import log_action as real_log_action
+        from kodiak.mcp.tools import _with_mcp_audit, stop_engine
+
+        def capture_log_action(
+            action: str,
+            details: dict[str, Any],
+            *,
+            error: str | None = None,
+            log_dir: Path | None = None,
+        ) -> None:
+            real_log_action(action, details, error=error, log_dir=tmp_path)
+
+        monkeypatch.setattr("kodiak.policy.log_action", capture_log_action)
+        result = _with_mcp_audit(stop_engine)()
+        data = _parse(result)
+
+        assert isinstance(data, dict)
+        assert data["error"] == "POLICY_BLOCKED"
+        record = json.loads((tmp_path / "audit.log").read_text().strip())
+        assert record["source"] == "mcp"
+        assert record["action"] == "execution_policy_blocked"
+        assert record["details"]["policy"]["action"] == "stop_engine"
+        assert record["details"]["policy"]["allowed"] is False
 
 
 # =============================================================================
@@ -231,6 +285,52 @@ class TestContractOrderTools:
         assert isinstance(data, dict | list)
         if isinstance(data, dict) and _is_error(data):
             _assert_error_contract(data)
+
+    def test_place_order_requires_execution_confirmation(self) -> None:
+        from kodiak.mcp.tools import place_order
+
+        result = place_order("AAPL", qty=1, side="buy", price=100)
+        data = _parse(result)
+
+        assert isinstance(data, dict)
+        assert data["error"] == "POLICY_BLOCKED"
+        assert data["details"]["policy"]["action"] == "place_order"
+
+    def test_place_order_confirmation_reaches_broker_or_safety_layer(self) -> None:
+        from kodiak.mcp.tools import place_order
+
+        result = place_order("AAPL", qty=1, side="buy", price=6000, confirm_execution=True)
+        data = _parse(result)
+
+        assert isinstance(data, dict)
+        if _is_error(data):
+            assert data["error"] != "POLICY_BLOCKED"
+            _assert_error_contract(data)
+        else:
+            assert "id" in data
+
+    def test_cancel_order_requires_execution_confirmation(self) -> None:
+        from kodiak.mcp.tools import cancel_order
+
+        result = cancel_order("order-123")
+        data = _parse(result)
+
+        assert isinstance(data, dict)
+        assert data["error"] == "POLICY_BLOCKED"
+        assert data["details"]["policy"]["action"] == "cancel_order"
+
+    def test_cancel_order_confirmation_reaches_broker_layer(self) -> None:
+        from kodiak.mcp.tools import cancel_order
+
+        result = cancel_order("order-123", confirm_execution=True)
+        data = _parse(result)
+
+        assert isinstance(data, dict)
+        if _is_error(data):
+            assert data["error"] != "POLICY_BLOCKED"
+            _assert_error_contract(data)
+        else:
+            assert data.get("order_id") == "order-123"
 
 
 # =============================================================================

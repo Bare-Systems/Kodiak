@@ -11,6 +11,7 @@ from kodiak.core.safety import SafetyCheck
 from kodiak.data.ledger import TradeLedger
 from kodiak.errors import BrokerError, SafetyError
 from kodiak.oms.store import save_order
+from kodiak.policy import add_policy_details, require_execution_intent
 from kodiak.schemas.orders import OrderRequest, OrderResponse
 from kodiak.utils.config import Config
 from kodiak.utils.logging import get_logger
@@ -18,7 +19,12 @@ from kodiak.utils.logging import get_logger
 logger = get_logger("trader.app.orders")
 
 
-def place_order(config: Config, request: OrderRequest) -> OrderResponse:
+def place_order(
+    config: Config,
+    request: OrderRequest,
+    *,
+    confirm_execution: bool = False,
+) -> OrderResponse:
     """Place a limit order.
 
     Args:
@@ -33,9 +39,17 @@ def place_order(config: Config, request: OrderRequest) -> OrderResponse:
         BrokerError: If broker call fails.
     """
     logger = get_logger("trader.trades")
-    broker = get_broker(config)
     symbol = request.symbol.upper()
     is_buy = request.side.lower() == "buy"
+    policy_details = {"symbol": symbol, "qty": request.qty, "side": request.side}
+    policy_decision = require_execution_intent(
+        "place_order",
+        execution_intent=confirm_execution,
+        log_dir=config.log_dir,
+        details=policy_details,
+    )
+
+    broker = get_broker(config)
 
     # Safety checks
     ledger = TradeLedger()
@@ -46,7 +60,7 @@ def place_order(config: Config, request: OrderRequest) -> OrderResponse:
     if not allowed:
         audit_log(
             "place_order_blocked",
-            {"symbol": symbol, "qty": request.qty, "side": request.side, "reason": reason},
+            add_policy_details({**policy_details, "reason": reason}, policy_decision),
             error=reason,
             log_dir=config.log_dir,
         )
@@ -69,7 +83,7 @@ def place_order(config: Config, request: OrderRequest) -> OrderResponse:
     except Exception as e:
         audit_log(
             "place_order",
-            {"symbol": symbol, "qty": request.qty, "side": request.side},
+            add_policy_details(policy_details, policy_decision),
             error=str(e),
             log_dir=config.log_dir,
         )
@@ -90,7 +104,7 @@ def place_order(config: Config, request: OrderRequest) -> OrderResponse:
     )
     audit_log(
         "place_order",
-        {"symbol": symbol, "qty": request.qty, "side": request.side, "order_id": order.id},
+        add_policy_details({**policy_details, "order_id": order.id}, policy_decision),
         log_dir=config.log_dir,
     )
     return OrderResponse.from_domain(order)
@@ -129,7 +143,12 @@ def list_orders(config: Config, show_all: bool = False) -> list[OrderResponse]:
     return [OrderResponse.from_domain(o) for o in orders_list]
 
 
-def cancel_order(config: Config, order_id: str) -> dict[str, str]:
+def cancel_order(
+    config: Config,
+    order_id: str,
+    *,
+    confirm_execution: bool = False,
+) -> dict[str, str]:
     """Cancel an open order.
 
     Args:
@@ -142,6 +161,14 @@ def cancel_order(config: Config, order_id: str) -> dict[str, str]:
     Raises:
         BrokerError: If cancellation fails.
     """
+    policy_details = {"order_id": order_id}
+    policy_decision = require_execution_intent(
+        "cancel_order",
+        execution_intent=confirm_execution,
+        log_dir=config.log_dir,
+        details=policy_details,
+    )
+
     broker = get_broker(config)
     success = broker.cancel_order(order_id)
 
@@ -154,12 +181,16 @@ def cancel_order(config: Config, order_id: str) -> dict[str, str]:
         except Exception:
             logger.debug(f"Failed to update local order {order_id} after cancellation")
 
-        audit_log("cancel_order", {"order_id": order_id}, log_dir=config.log_dir)
+        audit_log(
+            "cancel_order",
+            add_policy_details(policy_details, policy_decision),
+            log_dir=config.log_dir,
+        )
         return {"status": "canceled", "order_id": order_id}
     else:
         audit_log(
             "cancel_order",
-            {"order_id": order_id},
+            add_policy_details(policy_details, policy_decision),
             error="Cancel failed",
             log_dir=config.log_dir,
         )

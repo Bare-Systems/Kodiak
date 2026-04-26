@@ -6,6 +6,7 @@ from kodiak.errors import (
     ConfigurationError,
     EngineError,
     NotFoundError,
+    PolicyError,
     RateLimitError,
     SafetyError,
     TaskTimeoutError,
@@ -91,6 +92,11 @@ class TestSubclasses:
         assert err.code == "SAFETY_BLOCKED"
         assert isinstance(err, AppError)
 
+    def test_policy_error(self) -> None:
+        err = PolicyError(message="blocked")
+        assert err.code == "POLICY_BLOCKED"
+        assert isinstance(err, AppError)
+
     def test_engine_error(self) -> None:
         err = EngineError(message="engine crashed")
         assert err.code == "ENGINE_ERROR"
@@ -121,6 +127,7 @@ class TestSubclasses:
             ConfigurationError("c"),
             BrokerError("b"),
             SafetyError("s"),
+            PolicyError("p"),
             EngineError("e"),
             RateLimitError("r"),
             TaskTimeoutError("t"),

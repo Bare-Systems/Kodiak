@@ -11,6 +11,8 @@ Validates:
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -43,6 +45,21 @@ def test_health_no_auth(client: TestClient) -> None:
     r = client.get("/health")
     assert r.status_code == 200
     assert r.json()["status"] == "ok"
+
+
+def test_web_root_serves_headless_landing_page(client: TestClient) -> None:
+    r = client.get("/")
+    assert r.status_code == 200
+    assert "Kodiak Headless Server" in r.text
+    assert "/api/docs" in r.text
+    assert "/api/v1/schema.json" in r.text
+    assert "/mcp/" in r.text
+    assert "KODIAK_API_TOKEN" not in r.text
+
+
+def test_dashboard_route_not_exposed(client: TestClient) -> None:
+    r = client.get("/dashboard")
+    assert r.status_code == 404
 
 
 # ---------------------------------------------------------------------------
@@ -113,6 +130,149 @@ def test_research_benchmark_route_exists(client: TestClient, authed: dict) -> No
         headers=authed,
     )
     assert r.status_code in (200, 400, 422)
+
+
+def test_safety_status_route_exists(client: TestClient, authed: dict) -> None:
+    r = client.get("/api/v1/safety/status", headers=authed)
+    assert r.status_code in (200, 400)
+
+
+def test_engine_stop_requires_execution_confirmation(
+    client: TestClient,
+    authed: dict,
+) -> None:
+    r = client.post("/api/v1/engine/stop", headers=authed, json={"force": False})
+    assert r.status_code == 400
+    body = r.json()
+    _assert_envelope(body)
+    assert body["error"]["code"] == "POLICY_BLOCKED"
+
+
+def test_engine_stop_with_confirmation_reaches_engine_state(
+    client: TestClient,
+    authed: dict,
+) -> None:
+    r = client.post(
+        "/api/v1/engine/stop",
+        headers=authed,
+        json={"force": False, "confirm_execution": True},
+    )
+    assert r.status_code == 400
+    body = r.json()
+    _assert_envelope(body)
+    assert body["error"]["code"] == "ENGINE_NOT_RUNNING"
+
+
+def test_engine_start_requires_execution_confirmation(
+    client: TestClient,
+    authed: dict,
+) -> None:
+    r = client.post("/api/v1/engine/start", headers=authed, json={"dry_run": True})
+    assert r.status_code == 400
+    body = r.json()
+    _assert_envelope(body)
+    assert body["error"]["code"] == "POLICY_BLOCKED"
+
+
+def test_order_create_requires_execution_confirmation(
+    client: TestClient,
+    authed: dict,
+) -> None:
+    r = client.post(
+        "/api/v1/orders/",
+        headers=authed,
+        json={"symbol": "AAPL", "qty": 1, "side": "buy", "price": 100},
+    )
+    assert r.status_code == 400
+    body = r.json()
+    _assert_envelope(body)
+    assert body["error"]["code"] == "POLICY_BLOCKED"
+    assert body["error"]["details"]["policy"]["action"] == "place_order"
+
+
+def test_order_create_with_confirmation_reaches_broker_or_safety_layer(
+    client: TestClient,
+    authed: dict,
+) -> None:
+    r = client.post(
+        "/api/v1/orders/",
+        headers=authed,
+        json={
+            "symbol": "AAPL",
+            "qty": 1,
+            "side": "buy",
+            "price": 6000,
+            "confirm_execution": True,
+        },
+    )
+    assert r.status_code in (200, 400, 422)
+    body = r.json()
+    _assert_envelope(body)
+    if body["error"]:
+        assert body["error"]["code"] != "POLICY_BLOCKED"
+
+
+def test_order_cancel_requires_execution_confirmation(
+    client: TestClient,
+    authed: dict,
+) -> None:
+    r = client.delete("/api/v1/orders/order-123", headers=authed)
+    assert r.status_code == 400
+    body = r.json()
+    _assert_envelope(body)
+    assert body["error"]["code"] == "POLICY_BLOCKED"
+    assert body["error"]["details"]["policy"]["action"] == "cancel_order"
+
+
+def test_order_cancel_with_confirmation_reaches_broker_layer(
+    client: TestClient,
+    authed: dict,
+) -> None:
+    r = client.delete("/api/v1/orders/order-123?confirm_execution=true", headers=authed)
+    assert r.status_code in (200, 400)
+    body = r.json()
+    _assert_envelope(body)
+    if body["error"]:
+        assert body["error"]["code"] != "POLICY_BLOCKED"
+
+
+def test_blocked_rest_execution_audit_includes_request_context(
+    client: TestClient,
+    authed: dict,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    from kodiak.audit import log_action as real_log_action
+
+    def capture_log_action(
+        action: str,
+        details: dict[str, Any],
+        *,
+        error: str | None = None,
+        log_dir: Path | None = None,
+    ) -> None:
+        real_log_action(action, details, error=error, log_dir=tmp_path)
+
+    monkeypatch.setattr("kodiak.policy.log_action", capture_log_action)
+    headers = {**authed, "X-Kodiak-Actor": "operator@example.com", "X-Kodiak-Role": "operator"}
+
+    r = client.post(
+        "/api/v1/orders/",
+        headers=headers,
+        json={"symbol": "AAPL", "qty": 1, "side": "buy", "price": 100},
+    )
+
+    body = r.json()
+    assert r.status_code == 400
+    assert body["error"]["code"] == "POLICY_BLOCKED"
+    record = json.loads((tmp_path / "audit.log").read_text().strip())
+    assert record["source"] == "rest"
+    assert record["actor"] == "operator@example.com"
+    assert record["role"] == "operator"
+    assert record["request_id"] == body["meta"]["request_id"]
+    assert record["request_id"] == r.headers["x-request-id"]
+    assert record["details"]["policy"]["action"] == "place_order"
+    assert record["details"]["policy"]["allowed"] is False
 
 
 def test_versioned_orders_route_exists(client: TestClient, authed: dict) -> None:

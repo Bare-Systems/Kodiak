@@ -84,7 +84,7 @@ Kodiak is organized as a **monorepo with 3 packages**:
 - **kodiak_server/rest/routes/** — REST API endpoints (engine, portfolio, orders, strategies)
 - **kodiak_server/mcp/server.py** — Streamable-HTTP MCP transport
 - **kodiak_server/scheduler/** — Async scheduler (stub)
-- **kodiak_server/web/** — Web UI stub
+- **kodiak_server/web/** — Minimal headless landing page
 - Entry point: `kodiak-server` command
 
 **Dual-interface architecture**: CLI and Server both call shared `kodiak/app/` services and use `kodiak/schemas/`. One core, two adapters — no logic duplication. The app layer in `kodiak/app/` is the single source of truth for both. MCP tools are defined in `kodiak/mcp/tools.py` (transport-agnostic) and used by both `kodiak_cli` (stdio) and `kodiak_server` (HTTP).

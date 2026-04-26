@@ -19,6 +19,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **CI pipeline (K4-A)** — Added a GitHub Actions workflow that runs `ruff check`, scoped `mypy`, `pytest`, and coverage generation on pull requests and pushes to `main`, with `coverage.xml` uploaded as a workflow artifact.
 - **Structured logging and tracing (K4-B)** — Added JSON-capable structured logging, REST request timing with `X-Request-ID` and `X-Process-Time-Ms`, and engine-cycle metric events for observability across server and automation flows.
 - **Research data expansion (K5-A)** — Added file-backed fundamentals and normalized benchmark history through new MCP tools `get_fundamentals` and `get_benchmark_history`, plus REST endpoints at `GET /api/v1/research/fundamentals/{symbol}` and `GET /api/v1/research/benchmark/{symbol}`.
+- **Fundamentals ingestion (K5-C)** — Added `scripts/import_fundamentals.py` and reusable ingestion utilities to validate CSV/JSON fundamentals exports, enforce optional `as_of` freshness, and write Kodiak-readable `fundamentals.json`, per-symbol JSON, or CSV layouts.
+- **Headless server landing page (K6-A)** — Kept Kodiak headless-first by replacing the browser dashboard shell with a minimal server landing page that links to health, REST docs, schema export, and MCP without rendering account or trading data.
+- **Headless execution policy (K6-B)** — Added a shared execution policy layer that classifies actions and blocks sensitive REST/MCP execution calls unless `confirm_execution=true`, while attaching policy decision metadata to audit logs.
+- **Policy contract coverage (K6-C)** — Added REST and MCP contract tests proving sensitive execution tools and endpoints block without confirmation, reach the underlying execution layer with confirmation, and emit audit records with policy metadata and request context.
 
 ### Added (K2 — State Management)
 
@@ -54,7 +58,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Monorepo Architecture** — Kodiak is now a Python monorepo with three packages:
   - `kodiak-core` (packages/core/) — Shared library with app services, schemas, MCP tools, broker integrations, backtesting, strategies, indicators, and domain modules.
   - `kodiak-cli` (packages/cli/) — Click CLI tool for humans. Exposes MCP tools via stdio transport (`kodiak mcp` command).
-  - `kodiak-server` (packages/server/) — FastAPI-based persistent server with REST API at `/api/`, streamable-HTTP MCP at `/mcp/`, web UI, and async scheduler. Supports direct usage plus optional external integrations.
+  - `kodiak-server` (packages/server/) — FastAPI-based persistent server with REST API at `/api/`, streamable-HTTP MCP at `/mcp/`, a minimal landing page, and async scheduler. Supports direct usage plus optional external integrations.
 - **Three Entry Points**:
   - `kodiak` — CLI tool (installed globally via `pipx install -e packages/cli/`)
   - `kodiak-server` — Persistent server (started via `poetry run kodiak-server` or `kodiak-server`)
