@@ -129,6 +129,16 @@ poetry run python scripts/export_contracts.py --check
 
 CI runs snapshot tests so accidental endpoint, request, response, or MCP tool signature changes fail fast.
 
+### Headless Smoke Harness
+
+Run the release smoke harness before publishing or deploying:
+```bash
+poetry run python scripts/headless_smoke.py
+poetry run python scripts/headless_smoke.py --json
+```
+
+The smoke harness runs in-process and does not place orders or start the engine. It validates `/health`, the landing page, REST authentication, the OpenAPI export, REST envelope shape, MCP authentication, and registered MCP tools.
+
 `calculate_position_size` supports three methods:
 - `target_value` — size to a desired dollar exposure
 - `target_weight` — size to a desired portfolio weight percentage
