@@ -154,8 +154,12 @@ def get_portfolio_analytics(
     benchmark_symbol: str = "SPY",
     end_date: date | None = None,
 ) -> PortfolioAnalyticsResponse:
-    """Get snapshot-based portfolio analytics versus a benchmark."""
-    from kodiak.analysis.portfolio import compute_portfolio_analytics
+    """Get portfolio analytics versus a benchmark."""
+    from kodiak.analysis.portfolio import (
+        compute_portfolio_analytics,
+        compute_transaction_portfolio_analytics,
+    )
+    from kodiak.data.ledger import TradeLedger
 
     if lookback_days < 1:
         raise AppValidationError(
@@ -177,7 +181,12 @@ def get_portfolio_analytics(
     # Over-fetch calendar days so we can still get enough trading sessions.
     history_start = history_end - timedelta(days=max(lookback_days * 2, 30))
 
-    symbols = [position.symbol.upper() for position in positions]
+    ledger = TradeLedger()
+    trades = ledger.get_trades(since=history_start, limit=100000)
+    symbols = sorted(
+        {position.symbol.upper() for position in positions}
+        | {trade.symbol.upper() for trade in trades}
+    )
     benchmark_symbol = benchmark_symbol.upper()
     history_symbols = list(dict.fromkeys([*symbols, benchmark_symbol]))
 
@@ -207,14 +216,25 @@ def get_portfolio_analytics(
         )
 
     try:
-        analytics = compute_portfolio_analytics(
-            account=account,
-            positions=positions,
-            price_history=history,
-            benchmark_symbol=benchmark_symbol,
-            data_source=config.data.source,
-            lookback_days=lookback_days,
-        )
+        if trades:
+            analytics = compute_transaction_portfolio_analytics(
+                account=account,
+                positions=positions,
+                trades=trades,
+                price_history=history,
+                benchmark_symbol=benchmark_symbol,
+                data_source=config.data.source,
+                lookback_days=lookback_days,
+            )
+        else:
+            analytics = compute_portfolio_analytics(
+                account=account,
+                positions=positions,
+                price_history=history,
+                benchmark_symbol=benchmark_symbol,
+                data_source=config.data.source,
+                lookback_days=lookback_days,
+            )
     except ValueError as exc:
         raise AppValidationError(
             message=str(exc),

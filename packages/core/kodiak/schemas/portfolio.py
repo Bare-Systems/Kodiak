@@ -5,7 +5,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 if TYPE_CHECKING:
     from kodiak.analysis.allocation import (
@@ -14,6 +14,7 @@ if TYPE_CHECKING:
         RebalanceTrade,
     )
     from kodiak.analysis.portfolio import (
+        EquityCurvePoint,
         PortfolioAnalyticsResult,
         PortfolioConstituentAnalytics,
         PortfolioExposureSummary,
@@ -206,6 +207,24 @@ class PortfolioConstituentAnalyticsInfo(BaseModel):
         )
 
 
+class EquityCurvePointInfo(BaseModel):
+    """One portfolio equity curve observation."""
+
+    timestamp: str
+    equity: Decimal
+    cash: Decimal
+    positions_value: Decimal
+
+    @classmethod
+    def from_domain(cls, point: EquityCurvePoint) -> EquityCurvePointInfo:
+        return cls(
+            timestamp=point.timestamp.isoformat(),
+            equity=point.equity,
+            cash=point.cash,
+            positions_value=point.positions_value,
+        )
+
+
 class PortfolioAnalyticsResponse(BaseModel):
     """Snapshot-based portfolio analytics response."""
 
@@ -231,6 +250,7 @@ class PortfolioAnalyticsResponse(BaseModel):
     exposure: PortfolioExposureSummaryInfo
     rolling_returns: list[RollingReturnInfo]
     constituents: list[PortfolioConstituentAnalyticsInfo]
+    equity_curve: list[EquityCurvePointInfo] = Field(default_factory=list)
 
     @classmethod
     def from_domain(cls, result: PortfolioAnalyticsResult) -> PortfolioAnalyticsResponse:
@@ -260,6 +280,7 @@ class PortfolioAnalyticsResponse(BaseModel):
                 PortfolioConstituentAnalyticsInfo.from_domain(item)
                 for item in result.constituents
             ],
+            equity_curve=[EquityCurvePointInfo.from_domain(item) for item in result.equity_curve],
         )
 
 

@@ -26,6 +26,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Contract snapshots (K7-A)** — Added checked-in REST OpenAPI and MCP tool schema snapshots plus a regeneration script and snapshot tests to catch accidental public interface changes.
 - **Headless smoke harness (K7-B)** — Added an in-process release smoke command that validates health, landing page, REST auth/schema/envelope, MCP auth, and MCP tool registration without placing orders or starting the engine.
 - **Operator onboarding docs (K7-C)** — Added a focused headless operator runbook covering install, paper configuration, REST/MCP access, planning-first workflows, execution confirmation, release checks, and troubleshooting.
+- **Transaction-level portfolio analytics (K8-A)** — Portfolio analytics now use trade ledger records when available to reconstruct an equity curve from current cash, current positions, transactions, and historical closes, while preserving snapshot replay as the no-ledger fallback.
 
 ### Added (K2 — State Management)
 

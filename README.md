@@ -101,7 +101,7 @@ Common MCP workflows:
 - `calculate_position_size` / `get_rebalance_plan` — turn target weights, dollar caps, and risk budgets into planning outputs before placing trades
 - `get_fundamentals` / `get_benchmark_history` — pull file-backed company fundamentals and normalized benchmark price history for research workflows
 
-`get_portfolio_analytics` accepts `lookback_days`, `benchmark_symbol`, and optional `end_date` (`YYYY-MM-DD`). The current implementation replays the **current holdings snapshot** against historical closes, so it is reproducible and useful for benchmarking, but it is not a full transaction-level performance reconstruction.
+`get_portfolio_analytics` accepts `lookback_days`, `benchmark_symbol`, and optional `end_date` (`YYYY-MM-DD`). When trade ledger records exist inside the lookback window, Kodiak reconstructs a transaction-level equity curve from current cash, current positions, trades, and historical closes. If no ledger trades are available, it falls back to the reproducible current-holdings snapshot replay.
 
 If an agent will run CSV-backed MCP tools such as `run_backtest`, `run_optimization`, or `get_portfolio_analytics`, include `HISTORICAL_DATA_DIR` in the MCP process `env` block so the subprocess can see your dataset.
 
