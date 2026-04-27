@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     )
     from kodiak.analysis.portfolio import (
         EquityCurvePoint,
+        PerformanceAttribution,
         PortfolioAnalyticsResult,
         PortfolioConstituentAnalytics,
         PortfolioExposureSummary,
@@ -225,8 +226,38 @@ class EquityCurvePointInfo(BaseModel):
         )
 
 
+class PerformanceAttributionInfo(BaseModel):
+    """Performance attribution grouped by symbol, rule, or strategy."""
+
+    group_by: str
+    key: str
+    symbol: str | None
+    realized_pnl: Decimal
+    unrealized_pnl: Decimal
+    total_pnl: Decimal
+    contribution_pct: Decimal | None
+    trade_count: int
+    buy_qty: Decimal
+    sell_qty: Decimal
+
+    @classmethod
+    def from_domain(cls, attribution: PerformanceAttribution) -> PerformanceAttributionInfo:
+        return cls(
+            group_by=attribution.group_by,
+            key=attribution.key,
+            symbol=attribution.symbol,
+            realized_pnl=attribution.realized_pnl,
+            unrealized_pnl=attribution.unrealized_pnl,
+            total_pnl=attribution.total_pnl,
+            contribution_pct=attribution.contribution_pct,
+            trade_count=attribution.trade_count,
+            buy_qty=attribution.buy_qty,
+            sell_qty=attribution.sell_qty,
+        )
+
+
 class PortfolioAnalyticsResponse(BaseModel):
-    """Snapshot-based portfolio analytics response."""
+    """Portfolio analytics response."""
 
     generated_at: str
     history_start: str
@@ -251,6 +282,7 @@ class PortfolioAnalyticsResponse(BaseModel):
     rolling_returns: list[RollingReturnInfo]
     constituents: list[PortfolioConstituentAnalyticsInfo]
     equity_curve: list[EquityCurvePointInfo] = Field(default_factory=list)
+    attribution: list[PerformanceAttributionInfo] = Field(default_factory=list)
 
     @classmethod
     def from_domain(cls, result: PortfolioAnalyticsResult) -> PortfolioAnalyticsResponse:
@@ -281,6 +313,7 @@ class PortfolioAnalyticsResponse(BaseModel):
                 for item in result.constituents
             ],
             equity_curve=[EquityCurvePointInfo.from_domain(item) for item in result.equity_curve],
+            attribution=[PerformanceAttributionInfo.from_domain(item) for item in result.attribution],
         )
 
 

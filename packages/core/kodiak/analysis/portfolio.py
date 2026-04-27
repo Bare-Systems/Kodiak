@@ -75,6 +75,22 @@ class EquityCurvePoint:
 
 
 @dataclass
+class PerformanceAttribution:
+    """Performance attribution grouped by symbol, rule, or strategy."""
+
+    group_by: str
+    key: str
+    symbol: str | None
+    realized_pnl: Decimal
+    unrealized_pnl: Decimal
+    total_pnl: Decimal
+    contribution_pct: Decimal | None
+    trade_count: int
+    buy_qty: Decimal
+    sell_qty: Decimal
+
+
+@dataclass
 class PortfolioAnalyticsResult:
     """Portfolio analytics result."""
 
@@ -101,6 +117,7 @@ class PortfolioAnalyticsResult:
     rolling_returns: list[RollingReturn]
     constituents: list[PortfolioConstituentAnalytics]
     equity_curve: list[EquityCurvePoint]
+    attribution: list[PerformanceAttribution]
 
 
 @dataclass
@@ -113,6 +130,27 @@ class _SeriesMetrics:
     sharpe_ratio: Decimal | None
     benchmark_correlation: Decimal | None
     max_drawdown_pct: Decimal
+
+
+@dataclass
+class _AttributionAccumulator:
+    group_by: str
+    key: str
+    symbol: str | None = None
+    realized_pnl: Decimal = Decimal("0")
+    unrealized_pnl: Decimal = Decimal("0")
+    trade_count: int = 0
+    buy_qty: Decimal = Decimal("0")
+    sell_qty: Decimal = Decimal("0")
+
+
+@dataclass
+class _AttributionLot:
+    symbol: str
+    quantity: Decimal
+    price: Decimal
+    rule_key: str
+    strategy_key: str
 
 
 def compute_portfolio_analytics(
@@ -153,6 +191,10 @@ def compute_portfolio_analytics(
         aligned_prices=aligned_prices,
         portfolio_values=portfolio_values,
     )
+    attribution = _build_snapshot_attribution(
+        constituents=constituents,
+        start_equity=Decimal(str(portfolio_values.iloc[0])),
+    )
 
     return _build_result(
         account=account,
@@ -168,6 +210,7 @@ def compute_portfolio_analytics(
         metrics=metrics,
         exposure=exposure,
         constituents=constituents,
+        attribution=attribution,
         portfolio_values=portfolio_values,
         cash_values=pd.Series(float(account.cash), index=portfolio_values.index, dtype="float64"),
         positions_values=positions_values,
@@ -281,6 +324,14 @@ def compute_transaction_portfolio_analytics(
         aligned_prices=aligned_prices,
         start_equity=Decimal(str(portfolio_series.iloc[0])),
     )
+    attribution = _build_transaction_attribution(
+        symbols=symbols,
+        start_qty=start_qty,
+        end_qty=holdings,
+        trades=in_window_trades,
+        aligned_prices=aligned_prices,
+        start_equity=Decimal(str(portfolio_series.iloc[0])),
+    )
 
     return _build_result(
         account=account,
@@ -296,6 +347,7 @@ def compute_transaction_portfolio_analytics(
         metrics=metrics,
         exposure=exposure,
         constituents=constituents,
+        attribution=attribution,
         portfolio_values=portfolio_series,
         cash_values=cash_series,
         positions_values=positions_series,
@@ -465,6 +517,270 @@ def _build_transaction_constituents(
     return sorted(constituents, key=lambda item: item.market_value, reverse=True)
 
 
+def _build_snapshot_attribution(
+    *,
+    constituents: list[PortfolioConstituentAnalytics],
+    start_equity: Decimal,
+) -> list[PerformanceAttribution]:
+    attribution: list[PerformanceAttribution] = []
+    for constituent in constituents:
+        total_pnl = Decimal("0")
+        contribution_pct = constituent.contribution_pct
+        if contribution_pct is not None and start_equity > 0:
+            total_pnl = (contribution_pct / Decimal("100")) * start_equity
+        attribution.append(
+            PerformanceAttribution(
+                group_by="symbol",
+                key=constituent.symbol,
+                symbol=constituent.symbol,
+                realized_pnl=Decimal("0"),
+                unrealized_pnl=total_pnl,
+                total_pnl=total_pnl,
+                contribution_pct=contribution_pct,
+                trade_count=0,
+                buy_qty=Decimal("0"),
+                sell_qty=Decimal("0"),
+            )
+        )
+    return attribution
+
+
+def _build_transaction_attribution(
+    *,
+    symbols: list[str],
+    start_qty: dict[str, Decimal],
+    end_qty: dict[str, Decimal],
+    trades: list[TradeRecord],
+    aligned_prices: pd.DataFrame,
+    start_equity: Decimal,
+) -> list[PerformanceAttribution]:
+    symbol_entries = _build_symbol_attribution(
+        symbols=symbols,
+        start_qty=start_qty,
+        end_qty=end_qty,
+        trades=trades,
+        aligned_prices=aligned_prices,
+        start_equity=start_equity,
+    )
+    grouped_entries = _build_rule_strategy_attribution(
+        symbols=symbols,
+        start_qty=start_qty,
+        trades=trades,
+        aligned_prices=aligned_prices,
+        start_equity=start_equity,
+    )
+    return [*symbol_entries, *grouped_entries]
+
+
+def _build_symbol_attribution(
+    *,
+    symbols: list[str],
+    start_qty: dict[str, Decimal],
+    end_qty: dict[str, Decimal],
+    trades: list[TradeRecord],
+    aligned_prices: pd.DataFrame,
+    start_equity: Decimal,
+) -> list[PerformanceAttribution]:
+    realized_by_symbol = _calculate_realized_pnl_by_symbol(
+        symbols=symbols,
+        start_qty=start_qty,
+        trades=trades,
+        aligned_prices=aligned_prices,
+    )
+    entries: list[PerformanceAttribution] = []
+    for symbol in symbols:
+        symbol_trades = [trade for trade in trades if trade.symbol.upper() == symbol]
+        start_value = start_qty[symbol] * Decimal(str(aligned_prices[symbol].iloc[0]))
+        end_value = end_qty[symbol] * Decimal(str(aligned_prices[symbol].iloc[-1]))
+        net_trade_cash = sum(
+            (-trade.total if trade.is_buy else trade.total for trade in symbol_trades),
+            Decimal("0"),
+        )
+        total_pnl = end_value + net_trade_cash - start_value
+        realized_pnl = realized_by_symbol.get(symbol, Decimal("0"))
+        entries.append(
+            _attribution_from_accumulator(
+                _AttributionAccumulator(
+                    group_by="symbol",
+                    key=symbol,
+                    symbol=symbol,
+                    realized_pnl=realized_pnl,
+                    unrealized_pnl=total_pnl - realized_pnl,
+                    trade_count=len(symbol_trades),
+                    buy_qty=sum((trade.quantity for trade in symbol_trades if trade.is_buy), Decimal("0")),
+                    sell_qty=sum((trade.quantity for trade in symbol_trades if trade.is_sell), Decimal("0")),
+                ),
+                start_equity=start_equity,
+            )
+        )
+    return sorted(entries, key=lambda item: item.total_pnl, reverse=True)
+
+
+def _build_rule_strategy_attribution(
+    *,
+    symbols: list[str],
+    start_qty: dict[str, Decimal],
+    trades: list[TradeRecord],
+    aligned_prices: pd.DataFrame,
+    start_equity: Decimal,
+) -> list[PerformanceAttribution]:
+    accumulators: dict[tuple[str, str], _AttributionAccumulator] = {}
+    lots: dict[str, list[_AttributionLot]] = {
+        symbol: [
+            _AttributionLot(
+                symbol=symbol,
+                quantity=start_qty[symbol],
+                price=Decimal(str(aligned_prices[symbol].iloc[0])),
+                rule_key="unattributed",
+                strategy_key="unattributed",
+            )
+        ] if start_qty[symbol] > 0 else []
+        for symbol in symbols
+    }
+
+    for trade in sorted(trades, key=lambda item: item.timestamp):
+        symbol = trade.symbol.upper()
+        rule_key = _rule_key(trade.rule_id)
+        strategy_key = _strategy_key(trade.rule_id)
+        if trade.is_buy:
+            lots.setdefault(symbol, []).append(
+                _AttributionLot(
+                    symbol=symbol,
+                    quantity=trade.quantity,
+                    price=trade.price,
+                    rule_key=rule_key,
+                    strategy_key=strategy_key,
+                )
+            )
+            for group_by, key in (("rule", rule_key), ("strategy", strategy_key)):
+                accumulator = _get_accumulator(accumulators, group_by, key)
+                accumulator.trade_count += 1
+                accumulator.buy_qty += trade.quantity
+            continue
+
+        remaining = trade.quantity
+        symbol_lots = lots.setdefault(symbol, [])
+        while remaining > 0 and symbol_lots:
+            lot = symbol_lots[0]
+            matched_qty = remaining if remaining <= lot.quantity else lot.quantity
+            realized_pnl = matched_qty * (trade.price - lot.price)
+            for group_by, key in (("rule", lot.rule_key), ("strategy", lot.strategy_key)):
+                accumulator = _get_accumulator(accumulators, group_by, key)
+                accumulator.realized_pnl += realized_pnl
+                accumulator.trade_count += 1
+                accumulator.sell_qty += matched_qty
+
+            remaining -= matched_qty
+            if matched_qty >= lot.quantity:
+                symbol_lots.pop(0)
+            else:
+                lot.quantity -= matched_qty
+
+        if remaining > 0:
+            for group_by, key in (("rule", rule_key), ("strategy", strategy_key)):
+                accumulator = _get_accumulator(accumulators, group_by, key)
+                accumulator.trade_count += 1
+                accumulator.sell_qty += remaining
+
+    for symbol, symbol_lots in lots.items():
+        end_price = Decimal(str(aligned_prices[symbol].iloc[-1]))
+        for lot in symbol_lots:
+            unrealized_pnl = lot.quantity * (end_price - lot.price)
+            for group_by, key in (("rule", lot.rule_key), ("strategy", lot.strategy_key)):
+                _get_accumulator(accumulators, group_by, key).unrealized_pnl += unrealized_pnl
+
+    return sorted(
+        (
+            _attribution_from_accumulator(accumulator, start_equity=start_equity)
+            for accumulator in accumulators.values()
+        ),
+        key=lambda item: (item.group_by, item.total_pnl),
+        reverse=True,
+    )
+
+
+def _calculate_realized_pnl_by_symbol(
+    *,
+    symbols: list[str],
+    start_qty: dict[str, Decimal],
+    trades: list[TradeRecord],
+    aligned_prices: pd.DataFrame,
+) -> dict[str, Decimal]:
+    lots: dict[str, list[tuple[Decimal, Decimal]]] = {
+        symbol: (
+            [(start_qty[symbol], Decimal(str(aligned_prices[symbol].iloc[0])))]
+            if start_qty[symbol] > 0
+            else []
+        )
+        for symbol in symbols
+    }
+    realized: dict[str, Decimal] = {symbol: Decimal("0") for symbol in symbols}
+    for trade in sorted(trades, key=lambda item: item.timestamp):
+        symbol = trade.symbol.upper()
+        if trade.is_buy:
+            lots.setdefault(symbol, []).append((trade.quantity, trade.price))
+            continue
+        remaining = trade.quantity
+        symbol_lots = lots.setdefault(symbol, [])
+        while remaining > 0 and symbol_lots:
+            lot_qty, lot_price = symbol_lots[0]
+            matched_qty = remaining if remaining <= lot_qty else lot_qty
+            realized[symbol] = realized.get(symbol, Decimal("0")) + matched_qty * (trade.price - lot_price)
+            remaining -= matched_qty
+            if matched_qty >= lot_qty:
+                symbol_lots.pop(0)
+            else:
+                symbol_lots[0] = (lot_qty - matched_qty, lot_price)
+    return realized
+
+
+def _get_accumulator(
+    accumulators: dict[tuple[str, str], _AttributionAccumulator],
+    group_by: str,
+    key: str,
+) -> _AttributionAccumulator:
+    accumulator_key = (group_by, key)
+    if accumulator_key not in accumulators:
+        accumulators[accumulator_key] = _AttributionAccumulator(group_by=group_by, key=key)
+    return accumulators[accumulator_key]
+
+
+def _attribution_from_accumulator(
+    accumulator: _AttributionAccumulator,
+    *,
+    start_equity: Decimal,
+) -> PerformanceAttribution:
+    total_pnl = accumulator.realized_pnl + accumulator.unrealized_pnl
+    contribution_pct = None
+    if start_equity > 0:
+        contribution_pct = _to_decimal(float((total_pnl / start_equity) * Decimal("100")))
+    return PerformanceAttribution(
+        group_by=accumulator.group_by,
+        key=accumulator.key,
+        symbol=accumulator.symbol,
+        realized_pnl=accumulator.realized_pnl,
+        unrealized_pnl=accumulator.unrealized_pnl,
+        total_pnl=total_pnl,
+        contribution_pct=contribution_pct,
+        trade_count=accumulator.trade_count,
+        buy_qty=accumulator.buy_qty,
+        sell_qty=accumulator.sell_qty,
+    )
+
+
+def _rule_key(rule_id: str | None) -> str:
+    return rule_id or "unattributed"
+
+
+def _strategy_key(rule_id: str | None) -> str:
+    if not rule_id:
+        return "unattributed"
+    for separator in (":", "/", "|"):
+        if separator in rule_id:
+            return rule_id.split(separator, 1)[0] or "unattributed"
+    return rule_id
+
+
 def _build_result(
     *,
     account: Account,
@@ -480,6 +796,7 @@ def _build_result(
     metrics: _SeriesMetrics,
     exposure: PortfolioExposureSummary,
     constituents: list[PortfolioConstituentAnalytics],
+    attribution: list[PerformanceAttribution],
     portfolio_values: pd.Series,
     cash_values: pd.Series,
     positions_values: pd.Series,
@@ -513,6 +830,7 @@ def _build_result(
         rolling_returns=rolling_returns,
         constituents=constituents,
         equity_curve=_build_equity_curve_points(portfolio_values, cash_values, positions_values),
+        attribution=attribution,
     )
 
 

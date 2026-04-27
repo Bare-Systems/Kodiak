@@ -170,6 +170,7 @@ class TestComputePortfolioAnalytics:
         assert result.cumulative_return_pct == Decimal("1.923077")
         assert result.constituents[0].period_return_pct == Decimal("20.000000")
         assert result.constituents[0].contribution_pct == Decimal("1.923077")
+        assert result.attribution[0].group_by in {"symbol", "rule", "strategy"}
 
     def test_response_includes_equity_curve(self) -> None:
         account = Account(
@@ -192,3 +193,85 @@ class TestComputePortfolioAnalytics:
 
         assert len(response.equity_curve) == 3
         assert response.equity_curve[0].equity == Decimal("5000.000000")
+        assert response.attribution == []
+
+    def test_attributes_performance_by_symbol_rule_and_strategy(self) -> None:
+        account = Account(
+            cash=Decimal("9575"),
+            buying_power=Decimal("9575"),
+            equity=Decimal("10175"),
+            portfolio_value=Decimal("10175"),
+        )
+        positions = [
+            Position(
+                symbol="AAPL",
+                qty=Decimal("5"),
+                avg_entry_price=Decimal("100"),
+                current_price=Decimal("120"),
+                market_value=Decimal("600"),
+                unrealized_pl=Decimal("100"),
+                unrealized_pl_pct=Decimal("0.20"),
+            )
+        ]
+        trades = [
+            TradeRecord(
+                id=1,
+                order_id="buy-aapl",
+                symbol="AAPL",
+                side=OrderSide.BUY.value,
+                quantity=Decimal("10"),
+                price=Decimal("100"),
+                total=Decimal("1000"),
+                status=OrderStatus.FILLED.value,
+                rule_id="strategy-a:entry",
+                timestamp=datetime(2024, 1, 3, 10, 0, 0),
+            ),
+            TradeRecord(
+                id=2,
+                order_id="sell-aapl",
+                symbol="AAPL",
+                side=OrderSide.SELL.value,
+                quantity=Decimal("5"),
+                price=Decimal("115"),
+                total=Decimal("575"),
+                status=OrderStatus.FILLED.value,
+                rule_id="strategy-a:exit",
+                timestamp=datetime(2024, 1, 5, 10, 0, 0),
+            ),
+        ]
+
+        result = compute_transaction_portfolio_analytics(
+            account=account,
+            positions=positions,
+            trades=trades,
+            price_history={
+                "AAPL": _history([90, 95, 100, 110, 120]),
+                "SPY": _history([400, 401, 402, 403, 404]),
+            },
+            benchmark_symbol="SPY",
+            data_source="csv",
+            lookback_days=4,
+            generated_at=datetime(2026, 4, 26, 9, 30, 0),
+        )
+
+        by_group = {(item.group_by, item.key): item for item in result.attribution}
+        symbol = by_group[("symbol", "AAPL")]
+        rule = by_group[("rule", "strategy-a:entry")]
+        strategy = by_group[("strategy", "strategy-a")]
+
+        assert symbol.realized_pnl == Decimal("75")
+        assert symbol.unrealized_pnl == Decimal("100")
+        assert symbol.total_pnl == Decimal("175")
+        assert symbol.contribution_pct == Decimal("1.750000")
+        assert symbol.trade_count == 2
+        assert symbol.buy_qty == Decimal("10")
+        assert symbol.sell_qty == Decimal("5")
+
+        assert rule.realized_pnl == Decimal("75")
+        assert rule.unrealized_pnl == Decimal("100")
+        assert rule.total_pnl == Decimal("175")
+        assert rule.buy_qty == Decimal("10")
+        assert rule.sell_qty == Decimal("5")
+
+        assert strategy.total_pnl == Decimal("175")
+        assert strategy.contribution_pct == Decimal("1.750000")
