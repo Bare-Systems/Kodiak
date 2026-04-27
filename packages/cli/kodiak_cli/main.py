@@ -14,6 +14,7 @@ import tempfile
 from datetime import datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
+from typing import cast
 
 import click
 from kodiak import __version__
@@ -1135,6 +1136,85 @@ def export(ctx: click.Context, output: str, days: int) -> None:
         _json_output({"exported": count, "path": str(path)})
     else:
         console.print(f"[green]Exported {count} trades to {path}[/green]")
+
+
+@cli.command("analysis-report")
+@click.option("--output", "-o", type=click.Path(), help="Write report to a file")
+@click.option(
+    "--format",
+    "report_format",
+    type=click.Choice(["json", "markdown"]),
+    default="json",
+    show_default=True,
+    help="Report output format",
+)
+@click.option("--symbol", help="Filter by symbol")
+@click.option("--days", type=int, default=30, show_default=True, help="Analyze trades from last N days")
+@click.option("--limit", type=int, default=1000, show_default=True, help="Max trades to include")
+@click.option(
+    "--include-portfolio/--no-include-portfolio",
+    default=False,
+    show_default=True,
+    help="Include portfolio analytics when broker/data config is available",
+)
+@click.option(
+    "--portfolio-lookback-days",
+    type=int,
+    default=252,
+    show_default=True,
+    help="Lookback window for portfolio analytics",
+)
+@click.option(
+    "--benchmark-symbol",
+    default="SPY",
+    show_default=True,
+    help="Benchmark symbol for portfolio analytics",
+)
+@click.pass_context
+def analysis_report(
+    ctx: click.Context,
+    output: str | None,
+    report_format: str,
+    symbol: str | None,
+    days: int,
+    limit: int,
+    include_portfolio: bool,
+    portfolio_lookback_days: int,
+    benchmark_symbol: str,
+) -> None:
+    """Generate a headless analysis report."""
+    from kodiak.app.reports import ReportFormat, export_analysis_report
+
+    config = ctx.obj["config"]
+    as_json = _get_json_flag(ctx)
+
+    try:
+        result = export_analysis_report(
+            config,
+            output_path=output,
+            format=cast(ReportFormat, report_format),
+            symbol=symbol,
+            days=days,
+            limit=limit,
+            include_portfolio=include_portfolio,
+            portfolio_lookback_days=portfolio_lookback_days,
+            benchmark_symbol=benchmark_symbol,
+        )
+    except AppError as e:
+        _handle_error(e, as_json)
+        return
+
+    if as_json:
+        _json_output(result)
+        return
+
+    if output:
+        console.print(
+            f"[green]Wrote {report_format} analysis report to {result['path']} ({result['bytes']} bytes)[/green]"
+        )
+        return
+
+    console.print(result["content"])
 
 
 # =============================================================================

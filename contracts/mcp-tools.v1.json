@@ -1,7 +1,7 @@
 {
   "contract_version": "v1",
   "server": "kodiak",
-  "tool_count": 38,
+  "tool_count": 39,
   "tools": [
     {
       "description": "Analyze realized trade performance (win rate, profit factor, etc.).\n\nArgs:\n    symbol: Filter by ticker. If omitted, analyzes all trades.\n    days: Number of days to look back.\n    limit: Maximum number of trades to analyze.\n",
@@ -451,6 +451,87 @@
           "result"
         ],
         "title": "describe_indicatorOutput",
+        "type": "object"
+      }
+    },
+    {
+      "description": "Generate a headless analysis report and optionally write it to disk.\n\nArgs:\n    output_path: Optional local file path. If omitted, returns report content.\n    format: Report format: \"json\" or \"markdown\".\n    symbol: Filter trades by ticker. If omitted, includes all symbols.\n    days: Number of days to look back.\n    limit: Maximum number of trades to include.\n    include_portfolio: Include portfolio analytics when config/data is available.\n    portfolio_lookback_days: Lookback window for portfolio analytics.\n    benchmark_symbol: Benchmark symbol for portfolio analytics.\n",
+      "inputSchema": {
+        "properties": {
+          "benchmark_symbol": {
+            "default": "SPY",
+            "title": "Benchmark Symbol",
+            "type": "string"
+          },
+          "days": {
+            "default": 30,
+            "title": "Days",
+            "type": "integer"
+          },
+          "format": {
+            "default": "json",
+            "enum": [
+              "json",
+              "markdown"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
+          "include_portfolio": {
+            "default": false,
+            "title": "Include Portfolio",
+            "type": "boolean"
+          },
+          "limit": {
+            "default": 1000,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "output_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Output Path"
+          },
+          "portfolio_lookback_days": {
+            "default": 252,
+            "title": "Portfolio Lookback Days",
+            "type": "integer"
+          },
+          "symbol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Symbol"
+          }
+        },
+        "title": "export_analysis_reportArguments",
+        "type": "object"
+      },
+      "name": "export_analysis_report",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "export_analysis_reportOutput",
         "type": "object"
       }
     },

@@ -28,6 +28,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Operator onboarding docs (K7-C)** — Added a focused headless operator runbook covering install, paper configuration, REST/MCP access, planning-first workflows, execution confirmation, release checks, and troubleshooting.
 - **Transaction-level portfolio analytics (K8-A)** — Portfolio analytics now use trade ledger records when available to reconstruct an equity curve from current cash, current positions, transactions, and historical closes, while preserving snapshot replay as the no-ledger fallback.
 - **Performance attribution (K8-B)** — Transaction-level portfolio analytics now include attribution grouped by symbol, rule, and best-effort strategy key, with realized P&L, unrealized P&L, total P&L, contribution, trade counts, and buy/sell quantities.
+- **Exportable headless analysis reports (K8-C)** — Added JSON and Markdown analysis report generation through the app layer, CLI (`kodiak analysis-report`), REST (`POST /api/v1/reports/analysis`), and MCP (`export_analysis_report`) without introducing embedded UI state.
 
 ### Added (K2 — State Management)
 

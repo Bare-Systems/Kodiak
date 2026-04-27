@@ -101,6 +101,15 @@ def test_versioned_portfolio_analytics_route_exists(client: TestClient, authed: 
     assert r.status_code in (200, 400, 422)
 
 
+def test_analysis_report_route_exists(client: TestClient, authed: dict) -> None:
+    r = client.post(
+        "/api/v1/reports/analysis",
+        headers=authed,
+        json={"days": 1, "include_portfolio": False},
+    )
+    assert r.status_code in (200, 400, 422)
+
+
 def test_position_size_route_exists(client: TestClient, authed: dict) -> None:
     r = client.post(
         "/api/v1/portfolio/position-size",

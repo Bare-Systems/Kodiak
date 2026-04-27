@@ -148,9 +148,15 @@ def run_headless_smoke(api_token: str = "kodiak-smoke-token") -> SmokeReport:
         server = build_server()
         tools = asyncio.run(server.list_tools())
         tool_names = {tool.name for tool in tools}
-        required_tools = {"get_status", "get_portfolio_analytics", "get_rebalance_plan", "stop_engine"}
+        required_tools = {
+            "get_status",
+            "get_portfolio_analytics",
+            "get_rebalance_plan",
+            "export_analysis_report",
+            "stop_engine",
+        }
         missing = sorted(required_tools - tool_names)
-        if len(tools) >= 38 and not missing:
+        if len(tools) >= 39 and not missing:
             checks.append(_pass("mcp_tools", f"MCP registered {len(tools)} tools"))
         else:
             detail = f"MCP registered {len(tools)} tools"

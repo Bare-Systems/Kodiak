@@ -834,6 +834,48 @@ def get_today_pnl() -> str:
         return _err(e)
 
 
+def export_analysis_report(
+    output_path: str | None = None,
+    format: Literal["json", "markdown"] = "json",
+    symbol: str | None = None,
+    days: int = 30,
+    limit: int = 1000,
+    include_portfolio: bool = False,
+    portfolio_lookback_days: int = 252,
+    benchmark_symbol: str = "SPY",
+) -> str:
+    """Generate a headless analysis report and optionally write it to disk.
+
+    Args:
+        output_path: Optional local file path. If omitted, returns report content.
+        format: Report format: "json" or "markdown".
+        symbol: Filter trades by ticker. If omitted, includes all symbols.
+        days: Number of days to look back.
+        limit: Maximum number of trades to include.
+        include_portfolio: Include portfolio analytics when config/data is available.
+        portfolio_lookback_days: Lookback window for portfolio analytics.
+        benchmark_symbol: Benchmark symbol for portfolio analytics.
+    """
+    from kodiak.app.reports import export_analysis_report as _export_analysis_report
+
+    try:
+        return _ok(
+            _export_analysis_report(
+                _config(),
+                output_path=output_path,
+                format=format,
+                symbol=symbol.upper() if symbol else None,
+                days=days,
+                limit=limit,
+                include_portfolio=include_portfolio,
+                portfolio_lookback_days=portfolio_lookback_days,
+                benchmark_symbol=benchmark_symbol.upper(),
+            )
+        )
+    except AppError as e:
+        return _err(e)
+
+
 # =============================================================================
 # Indicator Tools
 # =============================================================================
@@ -1017,6 +1059,7 @@ _ALL_TOOLS = [
     analyze_performance,
     get_trade_history,
     get_today_pnl,
+    export_analysis_report,
     # Indicators
     list_indicators,
     describe_indicator,

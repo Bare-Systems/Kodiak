@@ -53,7 +53,7 @@ def analytics(
     end_date: date | None = Query(None),
     ctx: RequestContext = Depends(get_request_context),
 ) -> dict[str, Any]:
-    """Get snapshot-based portfolio analytics."""
+    """Get portfolio analytics with transaction-level reconstruction when available."""
     config = load_config()
     return ok(
         get_portfolio_analytics(

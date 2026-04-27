@@ -1,6 +1,61 @@
 {
   "components": {
     "schemas": {
+      "AnalysisReportRequest": {
+        "description": "Request body for a headless analysis report.",
+        "properties": {
+          "benchmark_symbol": {
+            "default": "SPY",
+            "title": "Benchmark Symbol",
+            "type": "string"
+          },
+          "days": {
+            "default": 30,
+            "minimum": 1.0,
+            "title": "Days",
+            "type": "integer"
+          },
+          "format": {
+            "default": "json",
+            "enum": [
+              "json",
+              "markdown"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
+          "include_portfolio": {
+            "default": false,
+            "title": "Include Portfolio",
+            "type": "boolean"
+          },
+          "limit": {
+            "default": 1000,
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "portfolio_lookback_days": {
+            "default": 252,
+            "minimum": 1.0,
+            "title": "Portfolio Lookback Days",
+            "type": "integer"
+          },
+          "symbol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Symbol"
+          }
+        },
+        "title": "AnalysisReportRequest",
+        "type": "object"
+      },
       "CreateStrategyRequest": {
         "properties": {
           "qty": {
@@ -691,7 +746,7 @@
     },
     "/v1/portfolio/analytics": {
       "get": {
-        "description": "Get snapshot-based portfolio analytics.",
+        "description": "Get portfolio analytics with transaction-level reconstruction when available.",
         "operationId": "analytics_v1_portfolio_analytics_get",
         "parameters": [
           {
@@ -1021,6 +1076,50 @@
         "summary": "Summary",
         "tags": [
           "portfolio"
+        ]
+      }
+    },
+    "/v1/reports/analysis": {
+      "post": {
+        "description": "Generate a headless analysis report without writing server-side files.",
+        "operationId": "analysis_report_v1_reports_analysis_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalysisReportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Analysis Report V1 Reports Analysis Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Analysis Report",
+        "tags": [
+          "reports"
         ]
       }
     },

@@ -433,6 +433,19 @@ class TestContractAnalysisTools:
         else:
             assert "today_pnl" in data
 
+    def test_export_analysis_report_contract(self) -> None:
+        from kodiak.mcp.tools import export_analysis_report
+
+        result = export_analysis_report(days=1, include_portfolio=False)
+        data = _parse(result)
+        assert isinstance(data, dict)
+        if _is_error(data):
+            _assert_error_contract(data)
+        else:
+            assert data["format"] == "json"
+            assert "bytes" in data
+            assert "report" in data
+
 
 # =============================================================================
 # Indicators (no broker required for list/describe)

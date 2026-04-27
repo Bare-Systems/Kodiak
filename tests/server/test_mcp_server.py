@@ -11,6 +11,7 @@ from kodiak.mcp.tools import (
     build_server,
     calculate_position_size,
     describe_indicator,
+    export_analysis_report,
     get_balance,
     get_benchmark_history,
     get_fundamentals,
@@ -54,7 +55,7 @@ class TestMCPServerSetup:
     def test_tool_count(self) -> None:
         """Should have expected number of MCP tools registered."""
         tools = asyncio.run(mcp.list_tools())
-        assert len(tools) == 38
+        assert len(tools) == 39
 
     def test_all_tools_have_descriptions(self) -> None:
         """Every registered tool should have a non-empty description."""
@@ -236,6 +237,13 @@ class TestAnalysisTools:
         result = get_today_pnl()
         parsed = json.loads(result)
         assert "today_pnl" in parsed
+
+    def test_export_analysis_report_returns_json(self) -> None:
+        result = export_analysis_report(days=1, include_portfolio=False)
+        parsed = json.loads(result)
+        assert isinstance(parsed, dict)
+        assert parsed["format"] == "json"
+        assert "report" in parsed
 
 
 # =============================================================================

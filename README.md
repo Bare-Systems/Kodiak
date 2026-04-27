@@ -57,7 +57,7 @@ Kodiak is built around a simple promise: **one trading core, two great interface
 * ✅ **Operational safety by default**: paper mode default, production confirmation, limits, kill switch, and audit logging.
 * ✅ **Production-ready integration surface**: REST API + streamable HTTP MCP + stdio MCP for local and remote agents.
 
-**MCP coverage:** 38 tools across engine, portfolio, research data, orders, strategies, backtests, analysis, indicators, optimization, safety, and scheduling.
+**MCP coverage:** 39 tools across engine, portfolio, research data, orders, strategies, backtests, analysis, indicators, optimization, safety, and scheduling.
 
 ### Feature Deep Dive
 
@@ -100,8 +100,11 @@ Common MCP workflows:
 - `get_portfolio`, `get_positions`, `get_portfolio_analytics` — inspect the live portfolio plus snapshot-based analytics versus a benchmark such as `SPY`
 - `calculate_position_size` / `get_rebalance_plan` — turn target weights, dollar caps, and risk budgets into planning outputs before placing trades
 - `get_fundamentals` / `get_benchmark_history` — pull file-backed company fundamentals and normalized benchmark price history for research workflows
+- `export_analysis_report` — generate JSON or Markdown trade analysis reports, optionally writing them to a local file from the MCP subprocess
 
 `get_portfolio_analytics` accepts `lookback_days`, `benchmark_symbol`, and optional `end_date` (`YYYY-MM-DD`). When trade ledger records exist inside the lookback window, Kodiak reconstructs a transaction-level equity curve from current cash, current positions, trades, and historical closes. It also returns attribution grouped by symbol, rule, and best-effort strategy key derived from `rule_id`; if no ledger trades are available, it falls back to the reproducible current-holdings snapshot replay.
+
+`export_analysis_report` accepts `format` (`json` or `markdown`), optional `output_path`, `symbol`, `days`, `limit`, `include_portfolio`, `portfolio_lookback_days`, and `benchmark_symbol`. If `output_path` is omitted, the tool returns the report content directly. If `include_portfolio=true`, the report includes portfolio analytics when broker credentials and historical data are available; otherwise it records a structured unavailable reason instead of failing the whole report. The same capability is available to humans as `kodiak analysis-report --output reports/analysis.md --format markdown --days 30`.
 
 If an agent will run CSV-backed MCP tools such as `run_backtest`, `run_optimization`, or `get_portfolio_analytics`, include `HISTORICAL_DATA_DIR` in the MCP process `env` block so the subprocess can see your dataset.
 
@@ -279,7 +282,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup.
 - **"command not found" in Claude Desktop**: Use the full path. Run `which kodiak` and use that path in the config.
 - **MCP server error**: Check Alpaca API keys and JSON syntax (no trailing commas). For CSV-backed MCP workflows, also set `HISTORICAL_DATA_DIR` in the MCP process environment.
 - **Homelab Blink deploy fails with "port is already allocated"**: The included Blink manifest publishes Kodiak on `192.168.86.53:18000`. If you still see a bind error, check for another service already using that host port.
-- **Tool not visible**: All 38 tools are registered. If a tool doesn’t appear in your client, it may be filtered. List all tools: `python3 -c "from kodiak.mcp.tools import build_server; [print(t.name) for t in build_server().list_tools()]"`
+- **Tool not visible**: All 39 tools are registered. If a tool doesn’t appear in your client, it may be filtered. List all tools: `python3 -c "from kodiak.mcp.tools import build_server; [print(t.name) for t in build_server().list_tools()]"`
 
 ## ⚙️ Configuration
 
