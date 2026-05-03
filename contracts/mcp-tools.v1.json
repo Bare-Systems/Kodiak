@@ -1254,7 +1254,7 @@
       }
     },
     {
-      "description": "Run a backtest on historical data.\n\nSubject to MCP rate limits and timeout (see MCP_BACKTEST_TIMEOUT_SECONDS).\n\nArgs:\n    strategy_type: \"trailing-stop\" or \"bracket\".\n    symbol: Stock ticker (e.g. \"AAPL\").\n    start: Start date (YYYY-MM-DD).\n    end: End date (YYYY-MM-DD).\n    qty: Shares per trade.\n    trailing_pct: Trailing stop percentage (trailing-stop strategy).\n    take_profit: Take profit percentage (bracket strategy).\n    stop_loss: Stop loss percentage (bracket strategy).\n    data_source: \"csv\" or \"alpaca\".\n    initial_capital: Starting capital for simulation.\n    save: Whether to save results to disk.\n    fee_type: \"fixed\" (dollars per order) or \"percentage\" (fraction of notional).\n    fee_value: Fee amount. For fixed: dollars per order. For percentage: fraction (e.g. 0.001 = 0.1%).\n    slippage_type: \"fixed_bps\" or \"volatility_bps\" (scales with bar range).\n    slippage_bps: Slippage in basis points (e.g. 5.0 = 5 bps).\n    fill_type: \"full\" (default) or \"partial\" (simulate partial fills).\n    fill_partial_pct: Fraction of order filled when fill_type is \"partial\" (e.g. 0.5 = 50%).\n",
+      "description": "Run a backtest on historical data.\n\nAccepts a single symbol (via `symbol`) or multiple symbols (via `symbols`).\nWhen multiple symbols are provided, capital is split equally and a\nPortfolioBacktestResponse is returned with per-symbol attribution.\n\nSubject to MCP rate limits and timeout (see MCP_BACKTEST_TIMEOUT_SECONDS).\n\nArgs:\n    strategy_type: \"trailing-stop\" or \"bracket\".\n    symbol: Single stock ticker (e.g. \"AAPL\"). Use symbols for multi-symbol.\n    symbols: List of tickers for portfolio backtest (e.g. [\"AAPL\", \"MSFT\"]).\n    start: Start date (YYYY-MM-DD).\n    end: End date (YYYY-MM-DD).\n    qty: Shares per trade (applied to each symbol).\n    trailing_pct: Trailing stop percentage (trailing-stop strategy).\n    take_profit: Take profit percentage (bracket strategy).\n    stop_loss: Stop loss percentage (bracket strategy).\n    data_source: \"csv\" or \"alpaca\".\n    initial_capital: Total starting capital (split equally when using symbols).\n    save: Whether to save results to disk.\n    fee_type: \"fixed\" (dollars per order) or \"percentage\" (fraction of notional).\n    fee_value: Fee amount. For fixed: dollars per order. For percentage: fraction (e.g. 0.001 = 0.1%).\n    slippage_type: \"fixed_bps\" or \"volatility_bps\" (scales with bar range).\n    slippage_bps: Slippage in basis points (e.g. 5.0 = 5 bps).\n    fill_type: \"full\" (default) or \"partial\" (simulate partial fills).\n    fill_partial_pct: Fraction of order filled when fill_type is \"partial\" (e.g. 0.5 = 50%).\n",
       "inputSchema": {
         "properties": {
           "data_source": {
@@ -1332,8 +1332,31 @@
             "type": "string"
           },
           "symbol": {
-            "title": "Symbol",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Symbol"
+          },
+          "symbols": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Symbols"
           },
           "take_profit": {
             "anyOf": [
@@ -1362,7 +1385,6 @@
         },
         "required": [
           "strategy_type",
-          "symbol",
           "start",
           "end"
         ],

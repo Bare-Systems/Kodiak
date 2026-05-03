@@ -2503,10 +2503,10 @@ def optimize(
 
 @backtest.command("run")
 @click.argument("strategy_type", type=click.Choice(["trailing-stop", "bracket"]))
-@click.argument("symbol")
+@click.argument("symbol", nargs=-1, required=True)
 @click.option("--start", required=True, help="Start date (YYYY-MM-DD)")
 @click.option("--end", required=True, help="End date (YYYY-MM-DD)")
-@click.option("--qty", type=int, default=10, help="Quantity to trade")
+@click.option("--qty", type=int, default=10, help="Quantity to trade per symbol")
 @click.option("--trailing-pct", type=float, help="Trailing stop percentage (for trailing-stop)")
 @click.option("--take-profit", type=float, help="Take profit percentage (for bracket)")
 @click.option("--stop-loss", type=float, help="Stop loss percentage (for bracket)")
@@ -2520,10 +2520,10 @@ def optimize(
     "--data-dir", type=click.Path(exists=True),
     help="Directory containing CSV data files",
 )
-@click.option("--initial-capital", type=float, default=100000.0, help="Starting capital")
+@click.option("--initial-capital", type=float, default=100000.0, help="Total starting capital (split equally across symbols)")
 @click.option("--save/--no-save", default=True, help="Save backtest results")
-@click.option("--chart", type=click.Path(dir_okay=False), help="Save chart to HTML file")
-@click.option("--show", is_flag=True, help="Open chart in browser")
+@click.option("--chart", type=click.Path(dir_okay=False), help="Save chart to HTML file (single-symbol only)")
+@click.option("--show", is_flag=True, help="Open chart in browser (single-symbol only)")
 @click.option(
     "--theme",
     type=click.Choice(["dark", "light"]),
@@ -2535,7 +2535,7 @@ def optimize(
 def backtest_run(
     ctx: click.Context,
     strategy_type: str,
-    symbol: str,
+    symbol: tuple[str, ...],
     start: str,
     end: str,
     qty: int,
@@ -2550,17 +2550,27 @@ def backtest_run(
     show: bool,
     theme: str,
 ) -> None:
-    """Run a backtest for a strategy."""
+    """Run a backtest for a strategy.
+
+    Pass one or more SYMBOL arguments to run a portfolio backtest:
+
+        kodiak backtest run trailing-stop AAPL --start 2024-01-01 --end 2024-12-31 --trailing-pct 5
+
+        kodiak backtest run bracket AAPL MSFT GOOGL --start 2024-01-01 --end 2024-12-31 --take-profit 0.05 --stop-loss 0.02
+    """
     from kodiak.app.backtests import run_backtest
-    from kodiak.schemas.backtests import BacktestRequest
+    from kodiak.schemas.backtests import BacktestRequest, PortfolioBacktestResponse
 
     logger = ctx.obj["logger"]
     as_json = _get_json_flag(ctx)
+    symbols = list(symbol)
+    is_portfolio = len(symbols) > 1
 
     try:
         request = BacktestRequest(
             strategy_type=strategy_type,
-            symbol=symbol,
+            symbols=symbols if is_portfolio else None,
+            symbol=symbols[0] if not is_portfolio else None,
             start=start,
             end=end,
             qty=qty,
@@ -2574,19 +2584,22 @@ def backtest_run(
         )
 
         if not as_json:
-            console.print(f"[cyan]Loading historical data for {symbol}...[/cyan]")
+            sym_display = ", ".join(symbols)
+            console.print(f"[cyan]Loading historical data for {sym_display}...[/cyan]")
             console.print("[cyan]Running backtest...[/cyan]")
 
         result = run_backtest(ctx.obj["config"], request)
 
         if as_json:
             _json_output(result)
+        elif isinstance(result, PortfolioBacktestResponse):
+            _display_portfolio_backtest_result(result)
         else:
             if save:
                 console.print(f"[green]Backtest saved with ID: {result.id}[/green]")
             _display_backtest_result_from_schema(result)
 
-            # Load domain result for charting
+            # Load domain result for charting (single-symbol only)
             if chart or show:
                 from kodiak.backtest import load_backtest as _load_bt
                 try:
@@ -2806,6 +2819,49 @@ def backtest_compare(
 # =============================================================================
 # Display Helpers
 # =============================================================================
+
+
+def _display_portfolio_backtest_result(result) -> None:
+    """Display portfolio backtest result from a PortfolioBacktestResponse schema."""
+    ret_color = "green" if result.portfolio_return_pct >= 0 else "red"
+
+    summary = Table(title=f"Portfolio Backtest — {', '.join(result.symbols)}")
+    summary.add_column("Metric", style="cyan")
+    summary.add_column("Value", style="white")
+    summary.add_row("Strategy", result.strategy_type)
+    summary.add_row("Symbols", ", ".join(result.symbols))
+    summary.add_row("Date Range", f"{result.start_date.date()} to {result.end_date.date()}")
+    summary.add_row("Initial Capital", f"${result.initial_capital:,.2f}")
+    summary.add_row(
+        "Portfolio Return %",
+        f"[{ret_color}]{result.portfolio_return_pct:+.2f}%[/{ret_color}]",
+    )
+    summary.add_row("Portfolio Win Rate", f"{result.portfolio_win_rate:.1f}%")
+    summary.add_row("Max Drawdown %", f"[red]{result.portfolio_max_drawdown_pct:.2f}%[/red]")
+    summary.add_row("Total Fees Paid", f"${result.portfolio_total_fees_paid:,.2f}")
+    summary.add_row("Total Trades", str(result.total_trades))
+    console.print(summary)
+
+    attr = Table(title="Per-Symbol Attribution")
+    attr.add_column("Symbol", style="cyan")
+    attr.add_column("Allocation", style="white")
+    attr.add_column("Return %", style="white")
+    attr.add_column("Win Rate", style="white")
+    attr.add_column("Trades", style="white")
+    attr.add_column("Max DD %", style="red")
+    attr.add_column("Fees Paid", style="white")
+    for s in result.symbol_attribution:
+        s_ret_color = "green" if s.total_return_pct >= 0 else "red"
+        attr.add_row(
+            s.symbol,
+            f"${s.allocation:,.2f}",
+            f"[{s_ret_color}]{s.total_return_pct:+.2f}%[/{s_ret_color}]",
+            f"{s.win_rate:.1f}%",
+            str(s.total_trades),
+            f"{s.max_drawdown_pct:.2f}%",
+            f"${s.total_fees_paid:,.2f}",
+        )
+    console.print(attr)
 
 
 def _display_backtest_result_from_schema(result, detailed: bool = False) -> None:

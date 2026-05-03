@@ -6,7 +6,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 if TYPE_CHECKING:
     from kodiak.backtest.results import BacktestResult
@@ -48,10 +48,16 @@ class ExecutionConfig(BaseModel):
 
 
 class BacktestRequest(BaseModel):
-    """Input for running a backtest."""
+    """Input for running a backtest.
+
+    Accepts either a single `symbol` (legacy) or a list of `symbols` (preferred).
+    When `symbols` contains more than one entry the orchestrator runs per-symbol
+    backtests with equally-split capital and returns a PortfolioBacktestResponse.
+    """
 
     strategy_type: str  # trailing-stop, bracket
-    symbol: str
+    symbol: str | None = None  # legacy single-symbol; prefer `symbols`
+    symbols: list[str] | None = None  # multi-symbol; takes precedence when set
     start: str  # YYYY-MM-DD
     end: str  # YYYY-MM-DD
     qty: int = Field(ge=1, default=10)
@@ -63,6 +69,22 @@ class BacktestRequest(BaseModel):
     initial_capital: float = Field(default=100000.0, gt=0)
     save: bool = True
     execution: ExecutionConfig | None = None
+
+    @model_validator(mode="after")
+    def normalize_symbols(self) -> BacktestRequest:
+        if not self.symbols and not self.symbol:
+            raise ValueError("At least one of 'symbol' or 'symbols' must be provided")
+        if self.symbols is not None:
+            self.symbols = [s.upper() for s in self.symbols]
+        if self.symbol is not None:
+            self.symbol = self.symbol.upper()
+        return self
+
+    def get_symbols(self) -> list[str]:
+        """Return the normalized list of symbols to backtest."""
+        if self.symbols:
+            return self.symbols
+        return [self.symbol] if self.symbol else []
 
 
 class BacktestSummary(BaseModel):
@@ -174,3 +196,46 @@ class BacktestResponse(BaseModel):
             ],
             trades=r.trades,
         )
+
+
+class PortfolioSymbolSummary(BaseModel):
+    """Per-symbol attribution within a portfolio backtest."""
+
+    symbol: str
+    backtest_id: str
+    allocation: Decimal
+    total_return: Decimal
+    total_return_pct: Decimal
+    gross_return_pct: Decimal
+    total_fees_paid: Decimal
+    win_rate: Decimal
+    total_trades: int
+    max_drawdown_pct: Decimal
+
+
+class PortfolioBacktestResponse(BaseModel):
+    """Multi-symbol portfolio backtest result.
+
+    Returned when BacktestRequest.symbols contains more than one ticker.
+    Capital is split equally across symbols; each symbol runs as an
+    independent backtest and results are aggregated here.
+    """
+
+    id: str
+    strategy_type: str
+    symbols: list[str]
+    start_date: datetime
+    end_date: datetime
+    created_at: datetime
+    initial_capital: Decimal
+    execution_config: dict[str, Any] | None = None
+    # Portfolio-level summary (equal-weight aggregation across symbols)
+    portfolio_return_pct: Decimal
+    portfolio_gross_return_pct: Decimal
+    portfolio_total_fees_paid: Decimal
+    portfolio_max_drawdown_pct: Decimal
+    portfolio_win_rate: Decimal
+    total_trades: int
+    # Per-symbol detail
+    symbol_results: list[BacktestResponse]
+    symbol_attribution: list[PortfolioSymbolSummary]

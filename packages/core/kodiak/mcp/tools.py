@@ -653,9 +653,10 @@ def list_scheduled_strategies() -> str:
 
 def run_backtest(
     strategy_type: str,
-    symbol: str,
     start: str,
     end: str,
+    symbol: str | None = None,
+    symbols: list[str] | None = None,
     qty: int = 10,
     trailing_pct: float | None = None,
     take_profit: float | None = None,
@@ -672,19 +673,24 @@ def run_backtest(
 ) -> str:
     """Run a backtest on historical data.
 
+    Accepts a single symbol (via `symbol`) or multiple symbols (via `symbols`).
+    When multiple symbols are provided, capital is split equally and a
+    PortfolioBacktestResponse is returned with per-symbol attribution.
+
     Subject to MCP rate limits and timeout (see MCP_BACKTEST_TIMEOUT_SECONDS).
 
     Args:
         strategy_type: "trailing-stop" or "bracket".
-        symbol: Stock ticker (e.g. "AAPL").
+        symbol: Single stock ticker (e.g. "AAPL"). Use symbols for multi-symbol.
+        symbols: List of tickers for portfolio backtest (e.g. ["AAPL", "MSFT"]).
         start: Start date (YYYY-MM-DD).
         end: End date (YYYY-MM-DD).
-        qty: Shares per trade.
+        qty: Shares per trade (applied to each symbol).
         trailing_pct: Trailing stop percentage (trailing-stop strategy).
         take_profit: Take profit percentage (bracket strategy).
         stop_loss: Stop loss percentage (bracket strategy).
         data_source: "csv" or "alpaca".
-        initial_capital: Starting capital for simulation.
+        initial_capital: Total starting capital (split equally when using symbols).
         save: Whether to save results to disk.
         fee_type: "fixed" (dollars per order) or "percentage" (fraction of notional).
         fee_value: Fee amount. For fixed: dollars per order. For percentage: fraction (e.g. 0.001 = 0.1%).
@@ -716,7 +722,8 @@ def run_backtest(
         )
         request = BacktestRequest(
             strategy_type=strategy_type,
-            symbol=symbol.upper(),
+            symbol=symbol.upper() if symbol else None,
+            symbols=[s.upper() for s in symbols] if symbols else None,
             start=start,
             end=end,
             qty=qty,
