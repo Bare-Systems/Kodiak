@@ -28,6 +28,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Operator onboarding docs (K7-C)** — Added a focused headless operator runbook covering install, paper configuration, REST/MCP access, planning-first workflows, execution confirmation, release checks, and troubleshooting.
 - **Transaction-level portfolio analytics (K8-A)** — Portfolio analytics now use trade ledger records when available to reconstruct an equity curve from current cash, current positions, transactions, and historical closes, while preserving snapshot replay as the no-ledger fallback.
 - **Performance attribution (K8-B)** — Transaction-level portfolio analytics now include attribution grouped by symbol, rule, and best-effort strategy key, with realized P&L, unrealized P&L, total P&L, contribution, trade counts, and buy/sell quantities.
+- **Realistic execution modeling (K9-A)** — Backtests now support configurable fee models (fixed per order or percentage of notional), slippage models (fixed bps or volatility-aware bps scaled by bar range), and partial fill simulation. Results include `total_fees_paid`, `gross_return`, and `gross_return_pct` alongside existing net metrics, and the applied `execution_config` is persisted in result artifacts for auditability. All models are exposed via CLI, MCP (`run_backtest`, `run_optimization`), and REST schemas. Defaults preserve zero-cost full-fill backward compatibility.
 - **Exportable headless analysis reports (K8-C)** — Added JSON and Markdown analysis report generation through the app layer, CLI (`kodiak analysis-report`), REST (`POST /api/v1/reports/analysis`), and MCP (`export_analysis_report`) without introducing embedded UI state.
 
 ### Added (K2 — State Management)
@@ -40,6 +41,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **Dogfood resilience for strategy state and analysis surfaces** — Strategy and order storage now fall back to the local YAML stores when `KODIAK_DATABASE_URL` is configured but PostgreSQL is unreachable, so `status`, `strategy list`, and other read-heavy flows keep working during partial outages. Portfolio analytics now retry against Alpaca historical data when local CSV coverage is incomplete, and backtest listings/report exports now surface duplicate setups, open-position runs, and richer portfolio/strategy snapshots for operator review.
 - **Historical data quality guardrails** — CSV, Alpaca, and cached historical data now reject non-finite OHLCV values (`NaN`, `inf`, `-inf`). Invalid cached bars are discarded and refetched from the wrapped provider instead of poisoning benchmark, backtest, or portfolio analytics workflows.
 - **Container port mapping** — Start command was mapping `6702:6702` (host:container) but the container listens on `8000`. Corrected to `6702:8000`. Updated `port-published` verify regex from `6702->6702` to `6702->8000` to match. This was the root cause of health check timeouts on deploy.
 

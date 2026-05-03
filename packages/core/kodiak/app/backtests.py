@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
+from collections import defaultdict
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
@@ -108,9 +111,13 @@ def run_backtest(config: Config, request: BacktestRequest) -> BacktestResponse:
         )
 
     # Create broker and engine
+    from kodiak.schemas.backtests import ExecutionConfig
+    execution_config = request.execution or ExecutionConfig()
+
     broker = HistoricalBroker(
         historical_data=historical_data,
         initial_cash=Decimal(str(request.initial_capital)),
+        execution_config=execution_config,
     )
 
     engine = BacktestEngine(
@@ -135,6 +142,7 @@ def run_backtest(config: Config, request: BacktestRequest) -> BacktestResponse:
             "start": request.start,
             "end": request.end,
             "backtest_id": result.id,
+            "execution_config": execution_config.model_dump(),
         },
         log_dir=config.log_dir,
     )
@@ -155,7 +163,7 @@ def list_backtests_app(data_dir: str | None = None) -> list[BacktestSummary]:
     data_dir_path = Path(data_dir) if data_dir else None
     backtests = list_backtests(data_dir=data_dir_path)
 
-    return [BacktestSummary.from_index_entry(bt) for bt in backtests]
+    return _enrich_backtest_summaries(backtests, data_dir=data_dir_path)
 
 
 def show_backtest(backtest_id: str, data_dir: str | None = None) -> BacktestResponse:
@@ -238,3 +246,90 @@ def delete_backtest_app(backtest_id: str, data_dir: str | None = None) -> dict[s
         )
 
     return {"status": "deleted", "backtest_id": backtest_id}
+
+
+def _enrich_backtest_summaries(
+    backtests: list[dict],
+    *,
+    data_dir: Path | None,
+) -> list[BacktestSummary]:
+    from kodiak.backtest import load_backtest
+
+    grouped_indexes: dict[str, list[int]] = defaultdict(list)
+    summaries: list[BacktestSummary] = []
+
+    for index, entry in enumerate(backtests):
+        enriched = dict(entry)
+        try:
+            result = load_backtest(entry["id"], data_dir=data_dir)
+            signature = _strategy_signature(result.strategy_type, result.symbol, result.strategy_config)
+            enriched["strategy_signature"] = signature
+            enriched["position_state"] = _position_state(result.trades)
+            grouped_indexes[signature].append(index)
+        except FileNotFoundError:
+            enriched["position_state"] = "unknown"
+        summaries.append(BacktestSummary.from_index_entry(enriched))
+
+    for indexes in grouped_indexes.values():
+        group_size = len(indexes)
+        for rank, summary_index in enumerate(indexes, start=1):
+            summaries[summary_index].duplicate_group_size = group_size
+            summaries[summary_index].duplicate_rank = rank
+
+    return summaries
+
+
+def _strategy_signature(
+    strategy_type: str,
+    symbol: str,
+    strategy_config: dict[str, object],
+) -> str:
+    normalized = {
+        key: value
+        for key, value in strategy_config.items()
+        if key
+        not in {
+            "id",
+            "phase",
+            "entry_order_id",
+            "entry_fill_price",
+            "high_watermark",
+            "exit_order_ids",
+            "scale_state",
+            "grid_state",
+            "created_at",
+            "updated_at",
+            "notes",
+        }
+    }
+    payload = json.dumps(
+        {
+            "strategy_type": strategy_type,
+            "symbol": symbol,
+            "config": normalized,
+        },
+        sort_keys=True,
+        default=str,
+    )
+    return f"{strategy_type}:{symbol}:{hashlib.sha1(payload.encode('utf-8')).hexdigest()[:12]}"
+
+
+def _position_state(trades: list[dict[str, object]]) -> str:
+    if not trades:
+        return "flat"
+
+    buy_qty = Decimal("0")
+    sell_qty = Decimal("0")
+    for trade in trades:
+        qty = Decimal(str(trade.get("qty", "0")))
+        side = str(trade.get("side", "")).lower()
+        if side == "buy":
+            buy_qty += qty
+        elif side == "sell":
+            sell_qty += qty
+
+    if buy_qty > sell_qty:
+        return "open"
+    if sell_qty > buy_qty:
+        return "short_or_inconsistent"
+    return "flat"

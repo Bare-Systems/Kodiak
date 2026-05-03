@@ -30,6 +30,7 @@ class Optimizer:
         data_dir: str | None = None,
         initial_capital: float = 100000.0,
         historical_data: dict[str, pd.DataFrame] | None = None,
+        execution_config=None,
     ) -> None:
         self.strategy_type = strategy_type
         self.symbol = symbol
@@ -40,6 +41,7 @@ class Optimizer:
         self.data_dir = data_dir
         self.initial_capital = Decimal(str(initial_capital))
         self.historical_data = historical_data
+        self.execution_config = execution_config
         self.logger = get_logger("trader.optimization")
 
     def optimize(
@@ -125,6 +127,7 @@ class Optimizer:
         broker = HistoricalBroker(
             historical_data=historical_data,
             initial_cash=self.initial_capital,
+            execution_config=self.execution_config,
         )
 
         engine = BacktestEngine(

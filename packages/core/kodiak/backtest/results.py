@@ -42,6 +42,12 @@ class BacktestResult:
     largest_win: Decimal = Decimal("0")
     largest_loss: Decimal = Decimal("0")
 
+    # Execution cost metrics
+    total_fees_paid: Decimal = Decimal("0")
+    gross_return: Decimal = Decimal("0")
+    gross_return_pct: Decimal = Decimal("0")
+    execution_config: dict | None = None
+
     # Time Series Data
     equity_curve: list[tuple[datetime, Decimal]] = field(default_factory=list)
     trades: list[dict] = field(default_factory=list)
@@ -64,6 +70,10 @@ class BacktestResult:
             "max_drawdown": str(self.max_drawdown),
             "max_drawdown_pct": str(self.max_drawdown_pct),
             "sharpe_ratio": str(self.sharpe_ratio) if self.sharpe_ratio else None,
+            "total_fees_paid": str(self.total_fees_paid),
+            "gross_return": str(self.gross_return),
+            "gross_return_pct": str(self.gross_return_pct),
+            "execution_config": self.execution_config,
             "total_trades": self.total_trades,
             "winning_trades": self.winning_trades,
             "losing_trades": self.losing_trades,
@@ -96,6 +106,10 @@ class BacktestResult:
             max_drawdown=Decimal(data["max_drawdown"]),
             max_drawdown_pct=Decimal(data["max_drawdown_pct"]),
             sharpe_ratio=Decimal(data["sharpe_ratio"]) if data.get("sharpe_ratio") else None,
+            total_fees_paid=Decimal(data.get("total_fees_paid", "0")),
+            gross_return=Decimal(data.get("gross_return", data["total_return"])),
+            gross_return_pct=Decimal(data.get("gross_return_pct", data["total_return_pct"])),
+            execution_config=data.get("execution_config"),
             total_trades=data["total_trades"],
             winning_trades=data["winning_trades"],
             losing_trades=data["losing_trades"],
@@ -120,6 +134,8 @@ def calculate_metrics(
     start_date: datetime,
     end_date: datetime,
     strategy_config: dict,
+    total_fees: Decimal = Decimal("0"),
+    execution_config: dict | None = None,
 ) -> BacktestResult:
     """Calculate backtest metrics from orders and equity curve.
 
@@ -136,10 +152,14 @@ def calculate_metrics(
     Returns:
         BacktestResult with calculated metrics.
     """
-    # Calculate total return
+    # Calculate total return (net of fees — equity curve already reflects fee deductions)
     final_equity = equity_curve[-1][1] if equity_curve else initial_capital
     total_return = final_equity - initial_capital
     total_return_pct = (total_return / initial_capital) * Decimal("100")
+
+    # Gross metrics (before fees)
+    gross_return = total_return + total_fees
+    gross_return_pct = (gross_return / initial_capital) * Decimal("100") if initial_capital > 0 else Decimal("0")
 
     # Match buy/sell orders to calculate P/L per trade
     trade_pnls = _calculate_trade_pnls(filled_orders)
@@ -217,6 +237,10 @@ def calculate_metrics(
         max_drawdown=max_drawdown,
         max_drawdown_pct=max_drawdown_pct,
         sharpe_ratio=None,  # TODO: Calculate Sharpe ratio
+        total_fees_paid=total_fees,
+        gross_return=gross_return,
+        gross_return_pct=gross_return_pct,
+        execution_config=execution_config,
         total_trades=total_trades,
         winning_trades=num_winning,
         losing_trades=num_losing,

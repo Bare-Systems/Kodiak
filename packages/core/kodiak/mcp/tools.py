@@ -663,6 +663,12 @@ def run_backtest(
     data_source: str = "csv",
     initial_capital: float = 100000.0,
     save: bool = True,
+    fee_type: str = "fixed",
+    fee_value: float = 0.0,
+    slippage_type: str = "fixed_bps",
+    slippage_bps: float = 0.0,
+    fill_type: str = "full",
+    fill_partial_pct: float = 1.0,
 ) -> str:
     """Run a backtest on historical data.
 
@@ -680,6 +686,12 @@ def run_backtest(
         data_source: "csv" or "alpaca".
         initial_capital: Starting capital for simulation.
         save: Whether to save results to disk.
+        fee_type: "fixed" (dollars per order) or "percentage" (fraction of notional).
+        fee_value: Fee amount. For fixed: dollars per order. For percentage: fraction (e.g. 0.001 = 0.1%).
+        slippage_type: "fixed_bps" or "volatility_bps" (scales with bar range).
+        slippage_bps: Slippage in basis points (e.g. 5.0 = 5 bps).
+        fill_type: "full" (default) or "partial" (simulate partial fills).
+        fill_partial_pct: Fraction of order filled when fill_type is "partial" (e.g. 0.5 = 50%).
     """
     from kodiak.app.backtests import run_backtest as _run_backtest
     from kodiak.mcp.limits import (
@@ -687,10 +699,21 @@ def run_backtest(
         get_backtest_timeout_seconds,
         run_with_timeout,
     )
-    from kodiak.schemas.backtests import BacktestRequest
+    from kodiak.schemas.backtests import (
+        BacktestRequest,
+        ExecutionConfig,
+        FeeModel,
+        FillModel,
+        SlippageModel,
+    )
 
     try:
         check_rate_limit("long_running")
+        execution = ExecutionConfig(
+            fee=FeeModel(type=fee_type, value=fee_value),
+            slippage=SlippageModel(type=slippage_type, bps=slippage_bps),
+            fill=FillModel(type=fill_type, partial_pct=fill_partial_pct),
+        )
         request = BacktestRequest(
             strategy_type=strategy_type,
             symbol=symbol.upper(),
@@ -703,6 +726,7 @@ def run_backtest(
             data_source=data_source,
             initial_capital=initial_capital,
             save=save,
+            execution=execution,
         )
         timeout = get_backtest_timeout_seconds()
         result = run_with_timeout(
@@ -925,6 +949,12 @@ def run_optimization(
     data_source: str = "csv",
     initial_capital: float = 100000.0,
     save: bool = True,
+    fee_type: str = "fixed",
+    fee_value: float = 0.0,
+    slippage_type: str = "fixed_bps",
+    slippage_bps: float = 0.0,
+    fill_type: str = "full",
+    fill_partial_pct: float = 1.0,
 ) -> str:
     """Run parameter optimization over a grid of strategy parameters.
 
@@ -945,6 +975,12 @@ def run_optimization(
         data_source: "csv" or "alpaca".
         initial_capital: Starting capital for simulation.
         save: Whether to save results to disk.
+        fee_type: "fixed" (dollars per order) or "percentage" (fraction of notional).
+        fee_value: Fee amount. For fixed: dollars per order. For percentage: fraction (e.g. 0.001 = 0.1%).
+        slippage_type: "fixed_bps" or "volatility_bps" (scales with bar range).
+        slippage_bps: Slippage in basis points (e.g. 5.0 = 5 bps).
+        fill_type: "full" (default) or "partial" (simulate partial fills).
+        fill_partial_pct: Fraction of order filled when fill_type is "partial" (e.g. 0.5 = 50%).
     """
     from kodiak.app.optimization import run_optimization as _run_opt
     from kodiak.mcp.limits import (
@@ -952,10 +988,16 @@ def run_optimization(
         get_optimization_timeout_seconds,
         run_with_timeout,
     )
+    from kodiak.schemas.backtests import ExecutionConfig, FeeModel, FillModel, SlippageModel
     from kodiak.schemas.optimization import OptimizeRequest
 
     try:
         check_rate_limit("long_running")
+        execution = ExecutionConfig(
+            fee=FeeModel(type=fee_type, value=fee_value),
+            slippage=SlippageModel(type=slippage_type, bps=slippage_bps),
+            fill=FillModel(type=fill_type, partial_pct=fill_partial_pct),
+        )
         request = OptimizeRequest(
             strategy_type=strategy_type,
             symbol=symbol.upper(),
@@ -968,6 +1010,7 @@ def run_optimization(
             data_source=data_source,
             initial_capital=initial_capital,
             save=save,
+            execution=execution,
         )
         timeout = get_optimization_timeout_seconds()
         result = run_with_timeout(

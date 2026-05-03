@@ -4,12 +4,47 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, Field
 
 if TYPE_CHECKING:
     from kodiak.backtest.results import BacktestResult
+
+
+class FeeModel(BaseModel):
+    """Transaction fee model for backtest execution."""
+
+    type: Literal["fixed", "percentage"] = "fixed"
+    value: float = Field(default=0.0, ge=0.0)
+    # fixed: dollar amount per order; percentage: fraction of notional (e.g. 0.001 = 0.1%)
+
+
+class SlippageModel(BaseModel):
+    """Slippage model for backtest execution."""
+
+    type: Literal["fixed_bps", "volatility_bps"] = "fixed_bps"
+    bps: float = Field(default=0.0, ge=0.0)
+    # fixed_bps: constant basis points; volatility_bps: bps scaled by bar range / close
+
+
+class FillModel(BaseModel):
+    """Fill behavior model for backtest execution."""
+
+    type: Literal["full", "partial"] = "full"
+    partial_pct: float = Field(default=1.0, ge=0.01, le=1.0)
+    # partial: fill only partial_pct of order qty (deterministic)
+
+
+class ExecutionConfig(BaseModel):
+    """Configurable execution realism for backtests.
+
+    Defaults produce zero-cost, full-fill, zero-slippage behavior (backward-compatible).
+    """
+
+    fee: FeeModel = Field(default_factory=FeeModel)
+    slippage: SlippageModel = Field(default_factory=SlippageModel)
+    fill: FillModel = Field(default_factory=FillModel)
 
 
 class BacktestRequest(BaseModel):
@@ -27,6 +62,7 @@ class BacktestRequest(BaseModel):
     data_dir: str | None = None
     initial_capital: float = Field(default=100000.0, gt=0)
     save: bool = True
+    execution: ExecutionConfig | None = None
 
 
 class BacktestSummary(BaseModel):
@@ -42,6 +78,10 @@ class BacktestSummary(BaseModel):
     total_trades: int
     max_drawdown_pct: Decimal
     created_at: str
+    position_state: str = "unknown"
+    strategy_signature: str | None = None
+    duplicate_group_size: int = 1
+    duplicate_rank: int = 1
 
     @classmethod
     def from_index_entry(cls, entry: dict[str, Any]) -> BacktestSummary:
@@ -57,6 +97,10 @@ class BacktestSummary(BaseModel):
             total_trades=entry["total_trades"],
             max_drawdown_pct=Decimal(entry["max_drawdown_pct"]),
             created_at=entry["created_at"],
+            position_state=entry.get("position_state", "unknown"),
+            strategy_signature=entry.get("strategy_signature"),
+            duplicate_group_size=entry.get("duplicate_group_size", 1),
+            duplicate_rank=entry.get("duplicate_rank", 1),
         )
 
 
@@ -71,7 +115,7 @@ class BacktestResponse(BaseModel):
     created_at: datetime
     strategy_config: dict[str, Any]
     initial_capital: Decimal
-    # Performance metrics
+    # Performance metrics (net of fees)
     total_return: Decimal
     total_return_pct: Decimal
     win_rate: Decimal
@@ -79,6 +123,11 @@ class BacktestResponse(BaseModel):
     max_drawdown: Decimal
     max_drawdown_pct: Decimal
     sharpe_ratio: Decimal | None = None
+    # Execution cost metrics
+    total_fees_paid: Decimal = Decimal("0")
+    gross_return: Decimal = Decimal("0")
+    gross_return_pct: Decimal = Decimal("0")
+    execution_config: dict[str, Any] | None = None
     # Trade statistics
     total_trades: int = 0
     winning_trades: int = 0
@@ -109,6 +158,10 @@ class BacktestResponse(BaseModel):
             max_drawdown=r.max_drawdown,
             max_drawdown_pct=r.max_drawdown_pct,
             sharpe_ratio=r.sharpe_ratio,
+            total_fees_paid=r.total_fees_paid,
+            gross_return=r.gross_return,
+            gross_return_pct=r.gross_return_pct,
+            execution_config=r.execution_config,
             total_trades=r.total_trades,
             winning_trades=r.winning_trades,
             losing_trades=r.losing_trades,

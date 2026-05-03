@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 if TYPE_CHECKING:
     from kodiak.optimization.results import OptimizationResult
 
-from kodiak.schemas.backtests import BacktestResponse
+from kodiak.schemas.backtests import BacktestResponse, ExecutionConfig
 
 
 class OptimizeRequest(BaseModel):
@@ -29,6 +29,7 @@ class OptimizeRequest(BaseModel):
     data_dir: str | None = None
     initial_capital: float = Field(default=100000.0, gt=0)
     save: bool = True
+    execution: ExecutionConfig | None = None
 
 
 class OptimizeResponse(BaseModel):

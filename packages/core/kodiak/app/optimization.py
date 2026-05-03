@@ -77,6 +77,9 @@ def run_optimization(config: Config, request: OptimizeRequest) -> OptimizeRespon
     _validate_optimization_params(request.strategy_type, normalized_params)
 
     # Create optimizer
+    from kodiak.schemas.backtests import ExecutionConfig
+    execution_config = request.execution or ExecutionConfig()
+
     optimizer = Optimizer(
         strategy_type=request.strategy_type,
         symbol=request.symbol,
@@ -86,6 +89,7 @@ def run_optimization(config: Config, request: OptimizeRequest) -> OptimizeRespon
         data_source=request.data_source,
         data_dir=request.data_dir,
         initial_capital=request.initial_capital,
+        execution_config=execution_config,
     )
 
     try:

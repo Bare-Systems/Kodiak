@@ -1254,7 +1254,7 @@
       }
     },
     {
-      "description": "Run a backtest on historical data.\n\nSubject to MCP rate limits and timeout (see MCP_BACKTEST_TIMEOUT_SECONDS).\n\nArgs:\n    strategy_type: \"trailing-stop\" or \"bracket\".\n    symbol: Stock ticker (e.g. \"AAPL\").\n    start: Start date (YYYY-MM-DD).\n    end: End date (YYYY-MM-DD).\n    qty: Shares per trade.\n    trailing_pct: Trailing stop percentage (trailing-stop strategy).\n    take_profit: Take profit percentage (bracket strategy).\n    stop_loss: Stop loss percentage (bracket strategy).\n    data_source: \"csv\" or \"alpaca\".\n    initial_capital: Starting capital for simulation.\n    save: Whether to save results to disk.\n",
+      "description": "Run a backtest on historical data.\n\nSubject to MCP rate limits and timeout (see MCP_BACKTEST_TIMEOUT_SECONDS).\n\nArgs:\n    strategy_type: \"trailing-stop\" or \"bracket\".\n    symbol: Stock ticker (e.g. \"AAPL\").\n    start: Start date (YYYY-MM-DD).\n    end: End date (YYYY-MM-DD).\n    qty: Shares per trade.\n    trailing_pct: Trailing stop percentage (trailing-stop strategy).\n    take_profit: Take profit percentage (bracket strategy).\n    stop_loss: Stop loss percentage (bracket strategy).\n    data_source: \"csv\" or \"alpaca\".\n    initial_capital: Starting capital for simulation.\n    save: Whether to save results to disk.\n    fee_type: \"fixed\" (dollars per order) or \"percentage\" (fraction of notional).\n    fee_value: Fee amount. For fixed: dollars per order. For percentage: fraction (e.g. 0.001 = 0.1%).\n    slippage_type: \"fixed_bps\" or \"volatility_bps\" (scales with bar range).\n    slippage_bps: Slippage in basis points (e.g. 5.0 = 5 bps).\n    fill_type: \"full\" (default) or \"partial\" (simulate partial fills).\n    fill_partial_pct: Fraction of order filled when fill_type is \"partial\" (e.g. 0.5 = 50%).\n",
       "inputSchema": {
         "properties": {
           "data_source": {
@@ -1264,6 +1264,26 @@
           },
           "end": {
             "title": "End",
+            "type": "string"
+          },
+          "fee_type": {
+            "default": "fixed",
+            "title": "Fee Type",
+            "type": "string"
+          },
+          "fee_value": {
+            "default": 0.0,
+            "title": "Fee Value",
+            "type": "number"
+          },
+          "fill_partial_pct": {
+            "default": 1.0,
+            "title": "Fill Partial Pct",
+            "type": "number"
+          },
+          "fill_type": {
+            "default": "full",
+            "title": "Fill Type",
             "type": "string"
           },
           "initial_capital": {
@@ -1280,6 +1300,16 @@
             "default": true,
             "title": "Save",
             "type": "boolean"
+          },
+          "slippage_bps": {
+            "default": 0.0,
+            "title": "Slippage Bps",
+            "type": "number"
+          },
+          "slippage_type": {
+            "default": "fixed_bps",
+            "title": "Slippage Type",
+            "type": "string"
           },
           "start": {
             "title": "Start",
@@ -1355,7 +1385,7 @@
       }
     },
     {
-      "description": "Run parameter optimization over a grid of strategy parameters.\n\nSubject to MCP rate limits and timeout (see MCP_OPTIMIZATION_TIMEOUT_SECONDS).\n\nArgs:\n    strategy_type: \"trailing-stop\" or \"bracket\".\n    symbol: Stock ticker (e.g. \"AAPL\").\n    start: Start date (YYYY-MM-DD).\n    end: End date (YYYY-MM-DD).\n    params: Parameter grid. Accepts both short and canonical names:\n        - For trailing-stop: \"trailing_pct\" or \"trailing_stop_pct\"\n        - For bracket: \"take_profit\"/\"take_profit_pct\" and \"stop_loss\"/\"stop_loss_pct\"\n        Example: {\"take_profit\": [0.02, 0.05], \"stop_loss\": [0.01, 0.02]}\n    objective: Metric to optimize (\"total_return_pct\", \"sharpe_ratio\", \"win_rate\", etc.).\n    method: \"grid\" for exhaustive search or \"random\" for sampling.\n    num_samples: Number of random samples (only for method=\"random\").\n    data_source: \"csv\" or \"alpaca\".\n    initial_capital: Starting capital for simulation.\n    save: Whether to save results to disk.\n",
+      "description": "Run parameter optimization over a grid of strategy parameters.\n\nSubject to MCP rate limits and timeout (see MCP_OPTIMIZATION_TIMEOUT_SECONDS).\n\nArgs:\n    strategy_type: \"trailing-stop\" or \"bracket\".\n    symbol: Stock ticker (e.g. \"AAPL\").\n    start: Start date (YYYY-MM-DD).\n    end: End date (YYYY-MM-DD).\n    params: Parameter grid. Accepts both short and canonical names:\n        - For trailing-stop: \"trailing_pct\" or \"trailing_stop_pct\"\n        - For bracket: \"take_profit\"/\"take_profit_pct\" and \"stop_loss\"/\"stop_loss_pct\"\n        Example: {\"take_profit\": [0.02, 0.05], \"stop_loss\": [0.01, 0.02]}\n    objective: Metric to optimize (\"total_return_pct\", \"sharpe_ratio\", \"win_rate\", etc.).\n    method: \"grid\" for exhaustive search or \"random\" for sampling.\n    num_samples: Number of random samples (only for method=\"random\").\n    data_source: \"csv\" or \"alpaca\".\n    initial_capital: Starting capital for simulation.\n    save: Whether to save results to disk.\n    fee_type: \"fixed\" (dollars per order) or \"percentage\" (fraction of notional).\n    fee_value: Fee amount. For fixed: dollars per order. For percentage: fraction (e.g. 0.001 = 0.1%).\n    slippage_type: \"fixed_bps\" or \"volatility_bps\" (scales with bar range).\n    slippage_bps: Slippage in basis points (e.g. 5.0 = 5 bps).\n    fill_type: \"full\" (default) or \"partial\" (simulate partial fills).\n    fill_partial_pct: Fraction of order filled when fill_type is \"partial\" (e.g. 0.5 = 50%).\n",
       "inputSchema": {
         "properties": {
           "data_source": {
@@ -1365,6 +1395,26 @@
           },
           "end": {
             "title": "End",
+            "type": "string"
+          },
+          "fee_type": {
+            "default": "fixed",
+            "title": "Fee Type",
+            "type": "string"
+          },
+          "fee_value": {
+            "default": 0.0,
+            "title": "Fee Value",
+            "type": "number"
+          },
+          "fill_partial_pct": {
+            "default": 1.0,
+            "title": "Fill Partial Pct",
+            "type": "number"
+          },
+          "fill_type": {
+            "default": "full",
+            "title": "Fill Type",
             "type": "string"
           },
           "initial_capital": {
@@ -1406,6 +1456,16 @@
             "default": true,
             "title": "Save",
             "type": "boolean"
+          },
+          "slippage_bps": {
+            "default": 0.0,
+            "title": "Slippage Bps",
+            "type": "number"
+          },
+          "slippage_type": {
+            "default": "fixed_bps",
+            "title": "Slippage Type",
+            "type": "string"
           },
           "start": {
             "title": "Start",

@@ -134,6 +134,8 @@ class BacktestEngine:
             start_date=start_ts,
             end_date=end_ts,
             strategy_config=self.strategy.to_dict(),
+            total_fees=self.broker.total_fees,
+            execution_config=self.broker.execution_config.model_dump(),
         )
 
         self.logger.info(

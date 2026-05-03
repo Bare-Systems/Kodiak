@@ -18,6 +18,7 @@ from kodiak.api.broker import (
     Position,
     Quote,
 )
+from kodiak.schemas.backtests import ExecutionConfig
 from kodiak.utils.logging import get_logger
 
 
@@ -38,6 +39,7 @@ class HistoricalBroker(Broker):
         self,
         historical_data: dict[str, pd.DataFrame],
         initial_cash: Decimal = Decimal("100000.00"),
+        execution_config: ExecutionConfig | None = None,
     ) -> None:
         """Initialize historical broker.
 
@@ -45,10 +47,15 @@ class HistoricalBroker(Broker):
             historical_data: Dict mapping symbol to OHLCV DataFrame.
                 DataFrame must have index=timestamp and columns: open, high, low, close, volume.
             initial_cash: Starting capital.
+            execution_config: Execution realism settings (fees, slippage, fill model).
         """
         self.data = historical_data
         self.logger = get_logger("trader.backtest.broker")
         self.initial_cash = initial_cash  # Store for metrics calculation
+        self.execution_config = execution_config or ExecutionConfig()
+
+        # Execution tracking
+        self.total_fees: Decimal = Decimal("0")
 
         # Current state
         self.current_timestamp: datetime | None = None
@@ -70,6 +77,48 @@ class HistoricalBroker(Broker):
 
         # Trailing stop tracking
         self._trailing_stop_highs: dict[str, Decimal] = {}  # order_id -> high watermark
+
+    def _apply_slippage(
+        self,
+        price: Decimal,
+        side: OrderSide,
+        bar: pd.Series | None = None,
+    ) -> Decimal:
+        """Apply slippage to a fill price.
+
+        Buys receive a higher price; sells receive a lower price.
+        """
+        slippage = self.execution_config.slippage
+        if slippage.bps == 0.0:
+            return price
+
+        bps_fraction = Decimal(str(slippage.bps)) / Decimal("10000")
+
+        if slippage.type == "volatility_bps" and bar is not None:
+            close = Decimal(str(bar["close"]))
+            if close > 0:
+                bar_range_pct = (Decimal(str(bar["high"])) - Decimal(str(bar["low"]))) / close
+                bps_fraction = bps_fraction * bar_range_pct
+
+        slip_amount = price * bps_fraction
+        return price + slip_amount if side == OrderSide.BUY else price - slip_amount
+
+    def _calculate_fee(self, notional: Decimal) -> Decimal:
+        """Calculate transaction fee for a fill."""
+        fee_model = self.execution_config.fee
+        if fee_model.value == 0.0:
+            return Decimal("0")
+        if fee_model.type == "fixed":
+            return Decimal(str(fee_model.value))
+        return notional * Decimal(str(fee_model.value))
+
+    def _apply_partial_fill(self, qty: Decimal) -> Decimal:
+        """Apply partial fill model to order quantity."""
+        fill_model = self.execution_config.fill
+        if fill_model.type == "partial" and fill_model.partial_pct < 1.0:
+            filled = qty * Decimal(str(fill_model.partial_pct))
+            return max(filled, Decimal("1"))
+        return qty
 
     def advance_to_bar(self, timestamp: datetime) -> None:
         """Advance broker to a specific timestamp.
@@ -172,7 +221,14 @@ class HistoricalBroker(Broker):
         # Market orders fill immediately
         if order_type == OrderType.MARKET:
             quote = self.get_quote(symbol)
-            fill_price = quote.last
+
+            # Get current bar for slippage calculation
+            df = self.data.get(symbol)
+            bar = df.iloc[self.current_bar_index[symbol]] if df is not None else None
+
+            raw_price = quote.last
+            fill_price = self._apply_slippage(raw_price, side, bar)
+            filled_qty = self._apply_partial_fill(qty)
 
             order = Order(
                 id=order_id,
@@ -181,7 +237,7 @@ class HistoricalBroker(Broker):
                 order_type=order_type,
                 qty=qty,
                 status=OrderStatus.FILLED,
-                filled_qty=qty,
+                filled_qty=filled_qty,
                 filled_avg_price=fill_price,
                 created_at=str(self.current_timestamp),
             )
@@ -322,8 +378,11 @@ class HistoricalBroker(Broker):
 
             # Fill the order if conditions met
             if fill_price is not None:
+                fill_price = self._apply_slippage(fill_price, order.side, bar)
+                filled_qty = self._apply_partial_fill(order.qty)
+
                 order.status = OrderStatus.FILLED
-                order.filled_qty = order.qty
+                order.filled_qty = filled_qty
                 order.filled_avg_price = fill_price
                 filled_symbols.add(order.symbol)
 
@@ -331,7 +390,7 @@ class HistoricalBroker(Broker):
 
                 self.logger.info(
                     f"{order.order_type.value} order filled: "
-                    f"{order.side.value} {order.qty} {order.symbol} @ {fill_price}"
+                    f"{order.side.value} {filled_qty} {order.symbol} @ {fill_price}"
                 )
 
     def _update_position(self, order: Order) -> None:
@@ -340,13 +399,15 @@ class HistoricalBroker(Broker):
         fill_price = order.filled_avg_price
         current_price = quote.last
 
-        # Update cash
+        # Update cash (including fees)
+        notional = fill_price * order.filled_qty
+        fee = self._calculate_fee(notional)
+        self.total_fees += fee
+
         if order.side == OrderSide.BUY:
-            cost = fill_price * order.filled_qty
-            self._account.cash -= cost
+            self._account.cash -= notional + fee
         else:
-            proceeds = fill_price * order.filled_qty
-            self._account.cash += proceeds
+            self._account.cash += notional - fee
 
         # Update position
         if order.symbol in self._positions:
